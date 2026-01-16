@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   MousePointer2, Square, Diamond, Circle, Minus, Trash2,
   Download, Upload, Grid, MoreVertical, X, Plus,
   Table as TableIcon, ZoomIn, ZoomOut, Share2, Users,
-  Code, Copy, Check
+  Code, Copy, Check, LogOut, FolderPlus, FolderOpen, ArrowLeft, LayoutGrid
 } from 'lucide-react';
 
 // Importações do Firebase
@@ -12,18 +12,21 @@ import {
   getAuth,
   signInAnonymously,
   onAuthStateChanged,
-  signInWithCustomToken
+  signInWithCustomToken,
+  signOut
 } from 'firebase/auth';
 import {
   getFirestore,
   doc,
   collection,
   setDoc,
+  getDocs,
   onSnapshot,
   updateDoc,
   query,
   where,
-  serverTimestamp
+  serverTimestamp,
+  deleteDoc
 } from 'firebase/firestore';
 
 // ==========================================
@@ -67,7 +70,7 @@ const getRandomColor = () => {
 };
 
 // ==========================================
-// COMPONENTES DE UI
+// COMPONENTES DE UI BÁSICOS
 // ==========================================
 
 const PropertyInput = ({ label, value, onChange, type = "text", options = [], placeholder = "" }) => (
@@ -146,74 +149,7 @@ const SQLPanel = ({ nodes, onClose }) => {
 };
 
 // ==========================================
-// COMPONENTE: HEADER
-// ==========================================
-
-const Header = ({ currentMode, setMode, onClear, onShare, onlineUsers, isConnected, toggleSql, showSql }) => (
-  <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-20 shadow-sm shrink-0">
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-indigo-200 shadow-lg">
-          <Grid className="text-white" size={18} />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-800 leading-none">
-            BrModelo<span className="text-indigo-600">Plus</span>
-          </h1>
-          <div className="flex items-center gap-1">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-400'}`}></span>
-            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
-              {isConnected ? 'Online' : 'Offline'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="h-8 w-px bg-slate-200 mx-2"></div>
-
-      <div className="flex bg-slate-100 p-1 rounded-lg">
-        {Object.values(MODES).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${currentMode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            {m}
-          </button>
-        ))}
-      </div>
-    </div>
-
-    <div className="flex items-center gap-2">
-      {currentMode === MODES.PHYSICAL && (
-        <button
-          onClick={toggleSql}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all mr-2 ${showSql ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-        >
-          <Code size={14} /> SQL
-        </button>
-      )}
-
-      <div className="flex items-center gap-2 mr-4 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-100" title="Usuários nesta sala">
-        <Users size={14} />
-        <span>{onlineUsers}</span>
-      </div>
-
-      <button onClick={onShare} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-slate-200">
-        <Share2 size={16} /> Compartilhar
-      </button>
-
-      <div className="h-6 w-px bg-slate-200 mx-1"></div>
-
-      <button onClick={onClear} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" title="Limpar Tudo">
-        <Trash2 size={20} />
-      </button>
-    </div>
-  </header>
-);
-
-// ==========================================
-// COMPONENTE: TOOLBAR
+// COMPONENTE: TOOLBAR (RESTAURADO)
 // ==========================================
 
 const Toolbar = ({ tool, setTool, currentMode }) => {
@@ -248,11 +184,10 @@ const Toolbar = ({ tool, setTool, currentMode }) => {
 };
 
 // ==========================================
-// COMPONENTE: PROPERTIES PANEL
+// COMPONENTE: PROPERTIES PANEL (RESTAURADO)
 // ==========================================
 
 const PropertiesPanel = ({ selectedIds, nodes, connections, updateNode, updateConnection, deleteSelected }) => {
-  // Se houver mais de um selecionado, não mostra propriedades (ou mostra modo bulk no futuro)
   if (selectedIds.length !== 1) {
     if (selectedIds.length > 1) {
       return (
@@ -374,7 +309,7 @@ const PropertiesPanel = ({ selectedIds, nodes, connections, updateNode, updateCo
 };
 
 // ==========================================
-// COMPONENTE: CANVAS
+// COMPONENTE: CANVAS (RESTAURADO)
 // ==========================================
 
 const CanvasBoard = ({
@@ -502,8 +437,7 @@ const CanvasBoard = ({
           ))}
         </g>
 
-        {/* CAIXA DE SELEÇÃO (Não afetada pelo zoom/pan diretamente, desenhada no SVG estático para simplicidade ou aqui transformada) */}
-        {/* Desenhando aqui fora do transform do zoom para ser relativo à tela ou dentro se quisermos coordenadas do mundo. Vamos fazer relativo ao pan/zoom para facilitar cálculo */}
+        {/* CAIXA DE SELEÇÃO */}
         {selectionBox && (
           <rect
             x={(selectionBox.startX - pan.x) / zoom}
@@ -522,10 +456,180 @@ const CanvasBoard = ({
 };
 
 // ==========================================
-// COMPONENTE PRINCIPAL (CONTAINER)
+// TELA: LOGIN
 // ==========================================
 
-export default function App() {
+const LoginScreen = ({ onLogin, loading }) => (
+  <div className="w-full h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+    <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-100 text-center">
+      <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 mx-auto mb-6">
+        <Grid className="text-white" size={32} />
+      </div>
+      <h1 className="text-2xl font-bold text-slate-800 mb-2">BrModelo<span className="text-indigo-600">Plus</span></h1>
+      <p className="text-slate-500 mb-8">Modelagem de dados moderna e colaborativa.</p>
+
+      <button
+        onClick={onLogin}
+        disabled={loading}
+        className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {loading ? (
+          <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+        ) : (
+          <>Entrar como Convidado <ArrowLeft className="rotate-180" size={16} /></>
+        )}
+      </button>
+      <p className="text-xs text-slate-400 mt-6">Seus projetos serão salvos localmente neste navegador.</p>
+    </div>
+  </div>
+);
+
+// ==========================================
+// TELA: DASHBOARD
+// ==========================================
+
+const DashboardScreen = ({ user, onOpenProject, onLogout }) => {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+
+  // Fetch Projects
+  useEffect(() => {
+    if (!user || !db) return;
+    const fetchProjects = async () => {
+      const q = collection(db, 'artifacts', appId, 'users', user.uid, 'projects');
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Ordenação em memória (Firebase requires index for orderBy sometimes)
+      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setProjects(list);
+      setLoading(false);
+    };
+    fetchProjects();
+  }, [user]);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newProjectName.trim()) return;
+
+    const roomId = generateId();
+    const projectData = {
+      name: newProjectName,
+      roomId: roomId,
+      createdAt: serverTimestamp(),
+      ownerId: user.uid
+    };
+
+    // Salva metadados do projeto na lista do usuário
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'projects', roomId), projectData);
+
+    // Abre o projeto
+    onOpenProject(roomId);
+  };
+
+  const handleDelete = async (e, projectId) => {
+    e.stopPropagation();
+    if (confirm('Tem certeza que deseja excluir este projeto?')) {
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'projects', projectId));
+      setProjects(projects.filter(p => p.id !== projectId));
+    }
+  }
+
+  return (
+    <div className="w-full h-screen bg-slate-50 flex flex-col overflow-hidden">
+      <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <Grid className="text-white" size={18} />
+          </div>
+          <h1 className="font-bold text-slate-800">Meus Projetos</h1>
+        </div>
+        <button onClick={onLogout} className="text-slate-500 hover:text-red-600 flex items-center gap-2 text-sm font-medium">
+          <LogOut size={16} /> Sair
+        </button>
+      </header>
+
+      <main className="flex-1 overflow-y-auto p-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold text-slate-800">Projetos Recentes</h2>
+            <button
+              onClick={() => setIsCreating(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
+            >
+              <FolderPlus size={18} /> Novo Projeto
+            </button>
+          </div>
+
+          {isCreating && (
+            <div className="mb-8 p-6 bg-white rounded-2xl border border-indigo-100 shadow-lg animate-in fade-in slide-in-from-top-4">
+              <form onSubmit={handleCreate} className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Nome do Projeto</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newProjectName}
+                    onChange={e => setNewProjectName(e.target.value)}
+                    placeholder="Ex: E-commerce Database"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700">Criar</button>
+              </form>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex justify-center py-20"><span className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></span></div>
+          ) : projects.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                <FolderOpen size={32} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-700">Nenhum projeto encontrado</h3>
+              <p className="text-slate-500">Crie seu primeiro diagrama para começar.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map(project => (
+                <div
+                  key={project.id}
+                  onClick={() => onOpenProject(project.roomId)}
+                  className="group bg-white p-5 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-50 transition-all cursor-pointer relative"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <LayoutGrid size={20} />
+                    </div>
+                    <button
+                      onClick={(e) => handleDelete(e, project.id)}
+                      className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-lg mb-1">{project.name}</h3>
+                  <p className="text-xs text-slate-400">
+                    Editado em {project.createdAt?.seconds ? new Date(project.createdAt.seconds * 1000).toLocaleDateString() : 'Hoje'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+// ==========================================
+// TELA: EDITOR (Refatorado)
+// ==========================================
+
+const EditorScreen = ({ user, roomId, onBack }) => {
   // --- Estados do Modelo ---
   const [mode, setMode] = useState(MODES.CONCEPTUAL);
   const [nodes, setNodes] = useState([]);
@@ -539,43 +643,80 @@ export default function App() {
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [showSql, setShowSql] = useState(false);
 
-  // --- Firebase & Colaboração ---
-  const [user, setUser] = useState(null);
-  const [roomId, setRoomId] = useState(null);
   const [cursors, setCursors] = useState([]);
 
   // --- Refs & Temporários ---
   const tempConnectionStart = useRef(null);
   const isDraggingCanvas = useRef(false);
   const isDraggingNode = useRef(false);
-  const isSelecting = useRef(false); // Para caixa de seleção
+  const isSelecting = useRef(false);
   const selectionBoxStart = useRef(null);
   const [selectionBox, setSelectionBox] = useState(null);
 
-  const dragStart = useRef({ x: 0, y: 0 }); // Posição do mouse
+  const dragStart = useRef({ x: 0, y: 0 });
   const canvasDragStart = useRef({ x: 0, y: 0 });
-  const initialNodePositions = useRef({}); // Para mover múltiplos nós
+  const initialNodePositions = useRef({});
   const lastCursorUpdate = useRef(0);
 
-  // 1. INICIALIZAÇÃO E AUTH
-  useEffect(() => {
-    if (!auth) return;
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-      else await signInAnonymously(auth);
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsubscribe();
-  }, []);
+  // --- Header com Botão Voltar ---
+  const EditorHeader = (
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-20 shadow-sm shrink-0">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 mr-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors" title="Voltar ao Dashboard">
+          <ArrowLeft size={20} />
+        </button>
 
-  // 2. GESTÃO DE SALA
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    let rid = params.get('room');
-    if (!rid) { rid = generateId(); window.history.pushState({ path: `${window.location.pathname}?room=${rid}` }, '', `${window.location.pathname}?room=${rid}`); }
-    setRoomId(rid);
-  }, []);
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-indigo-200 shadow-lg">
+            <Grid className="text-white" size={18} />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-slate-800 leading-none">
+              BrModelo<span className="text-indigo-600">Plus</span>
+            </h1>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Editor</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-8 w-px bg-slate-200 mx-2"></div>
+
+        <div className="flex bg-slate-100 p-1 rounded-lg">
+          {Object.values(MODES).map((m) => (
+            <button
+              key={m}
+              onClick={() => { setMode(m); saveToFirebase(undefined, undefined, m); }}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${mode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {mode === MODES.PHYSICAL && (
+          <button
+            onClick={() => setShowSql(!showSql)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all mr-2 ${showSql ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+          >
+            <Code size={14} /> SQL
+          </button>
+        )}
+
+        <div className="flex items-center gap-2 mr-4 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-100" title="Usuários nesta sala">
+          <Users size={14} />
+          <span>{onlineUsers}</span>
+        </div>
+
+        <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Link copiado!'); }} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-slate-200">
+          <Share2 size={16} /> Compartilhar
+        </button>
+      </div>
+    </header>
+  );
 
   // 3. SINCRONIZAÇÃO
   useEffect(() => {
@@ -639,11 +780,6 @@ export default function App() {
 
   // --- Helpers ---
   const getMousePos = (e) => {
-    // Coordenadas relativas ao canvas/svg
-    // Precisamos saber onde o canvas está na tela para calcular offset
-    // Como o header e toolbar tiram espaço, clientX/Y não é suficiente se não subtrair
-    // Mas como estamos com layout flex full screen, geralmente clientX funciona menos o offset do Header
-    // Vamos simplificar assumindo que o svg ocupa o resto da tela
     const headerHeight = 64;
     const x = (e.clientX - pan.x) / zoom;
     const y = (e.clientY - headerHeight - pan.y) / zoom;
@@ -718,17 +854,15 @@ export default function App() {
         else newSelection.push(id);
       } else {
         if (!newSelection.includes(id)) newSelection = [id];
-        // Se já está selecionado e clicamos sem shift, mantemos a seleção para permitir arrastar o grupo
       }
       setSelectedIds(newSelection);
 
       if (!isConnection) {
         isDraggingNode.current = true;
-        // Salva posições iniciais de TODOS os nós selecionados para arrasto em grupo
         const positions = {};
         nodes.forEach(n => { if (newSelection.includes(n.id)) positions[n.id] = { x: n.x, y: n.y }; });
         initialNodePositions.current = positions;
-        dragStart.current = getMousePos(e); // Ponto de partida do mouse
+        dragStart.current = getMousePos(e);
       }
     }
   };
@@ -737,7 +871,6 @@ export default function App() {
     const pos = getMousePos(e);
     updateCursor(pos.x, pos.y);
 
-    // Pan
     if (isDraggingCanvas.current) {
       const dx = e.clientX - canvasDragStart.current.x;
       const dy = e.clientY - canvasDragStart.current.y;
@@ -745,16 +878,9 @@ export default function App() {
       return;
     }
 
-    // Selection Box
     if (isSelecting.current) {
-      // Atualiza visual da caixa
       const startRawX = selectionBoxStart.current.x;
       const startRawY = selectionBoxStart.current.y;
-      // Normaliza para desenhar retangulo corretamente (width/height positivos)
-      // Mas para visualização simples svg, podemos lidar com coords negativas ou math.min
-      // Aqui vamos apenas passar coords atuais para o renderizador SVG lidar ou calcular
-      // Simplificando: vamos passar raw para o SVG renderizar relativo ao container
-      // Ajuste: o SVG renderiza dentro do container abaixo do header
       const headerH = 64;
       setSelectionBox({
         startX: Math.min(startRawX, e.clientX),
@@ -765,7 +891,6 @@ export default function App() {
       return;
     }
 
-    // Drag Nodes
     if (isDraggingNode.current && selectedIds.length > 0) {
       const dx = pos.x - dragStart.current.x;
       const dy = pos.y - dragStart.current.y;
@@ -785,23 +910,17 @@ export default function App() {
   };
 
   const handleMouseUp = (e) => {
-    // Finaliza Drag
     if (isDraggingNode.current) {
       saveToFirebase(nodes, undefined, undefined);
     }
 
-    // Finaliza Pan
     isDraggingCanvas.current = false;
     isDraggingNode.current = false;
 
-    // Finaliza Seleção em Caixa
     if (isSelecting.current) {
       isSelecting.current = false;
       const box = selectionBox;
       if (box) {
-        // Calcular quais nós estão dentro da caixa
-        // Box está em coordenadas raw (pixel screen relativa ao content)
-        // Precisamos converter box para coordenadas do mundo (zoom/pan)
         const worldX1 = (box.startX - pan.x) / zoom;
         const worldY1 = (box.startY - pan.y) / zoom;
         const worldX2 = (box.currentX - pan.x) / zoom;
@@ -811,7 +930,6 @@ export default function App() {
           return n.x >= worldX1 && n.x <= worldX2 && n.y >= worldY1 && n.y <= worldY2;
         }).map(n => n.id);
 
-        // Se segurou shift, adiciona, senão substitui
         setSelectedIds(prev => e.shiftKey ? [...new Set([...prev, ...inside])] : inside);
       }
       setSelectionBox(null);
@@ -843,23 +961,9 @@ export default function App() {
     saveToFirebase(newNodes, newConns, undefined);
   };
 
-  const clearCanvas = () => {
-    if (confirm('Deseja limpar todo o modelo?')) {
-      setNodes([]); setConnections([]); setSelectedIds([]);
-      saveToFirebase([], [], undefined);
-    }
-  };
-
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => alert('Link copiado!'));
-  };
-
-  const changeMode = (m) => { setMode(m); saveToFirebase(undefined, undefined, m); };
-
   return (
     <div className="w-full h-screen flex flex-col bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
-      <Header currentMode={mode} setMode={changeMode} onClear={clearCanvas} onShare={handleShare} onlineUsers={onlineUsers} isConnected={!!user} toggleSql={() => setShowSql(!showSql)} showSql={showSql} />
+      {EditorHeader}
 
       <div className="flex-1 flex relative overflow-hidden">
         <Toolbar tool={tool} setTool={setTool} currentMode={mode} />
@@ -904,4 +1008,64 @@ export default function App() {
       </div>
     </div>
   );
+};
+
+// ==========================================
+// COMPONENTE PRINCIPAL (ROTEADOR)
+// ==========================================
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [roomId, setRoomId] = useState(null);
+
+  useEffect(() => {
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+
+      // Checa se há uma sala na URL
+      const params = new URLSearchParams(window.location.search);
+      const rid = params.get('room');
+      if (rid) setRoomId(rid);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    setAuthLoading(true);
+    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+      await signInWithCustomToken(auth, __initial_auth_token);
+    } else {
+      await signInAnonymously(auth);
+    }
+  };
+
+  const handleOpenProject = (id) => {
+    setRoomId(id);
+    const newUrl = `${window.location.pathname}?room=${id}`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+  };
+
+  const handleBackToDashboard = () => {
+    setRoomId(null);
+    const newUrl = window.location.pathname;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    setRoomId(null);
+  };
+
+  if (!user) {
+    return <LoginScreen onLogin={handleLogin} loading={authLoading} />;
+  }
+
+  if (roomId) {
+    return <EditorScreen user={user} roomId={roomId} onBack={handleBackToDashboard} />;
+  }
+
+  return <DashboardScreen user={user} onOpenProject={handleOpenProject} onLogout={handleLogout} />;
 }
