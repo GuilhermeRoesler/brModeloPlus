@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   MousePointer2, Square, Diamond, Circle, Minus, Trash2,
   Download, Upload, Grid, MoreVertical, X, Plus,
-  Table as TableIcon, ZoomIn, ZoomOut, Share2, Users, Wifi, WifiOff
+  Table as TableIcon, ZoomIn, ZoomOut, Share2, Users,
+  Code, Copy, Check
 } from 'lucide-react';
 
 // Importações do Firebase
@@ -22,7 +23,6 @@ import {
   updateDoc,
   query,
   where,
-  deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
 
@@ -30,7 +30,6 @@ import {
 // CONFIGURAÇÃO DO FIREBASE
 // ==========================================
 
-// Variáveis globais injetadas pelo ambiente ou placeholders
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -41,7 +40,6 @@ const firebaseConfig = {
 };
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
 
-// Inicialização segura
 let auth, db;
 if (firebaseConfig) {
   const app = initializeApp(firebaseConfig);
@@ -88,10 +86,70 @@ const PropertyInput = ({ label, value, onChange, type = "text", options = [], pl
 );
 
 // ==========================================
+// SQL GENERATOR
+// ==========================================
+
+const generateSQL = (nodes) => {
+  const tables = nodes.filter(n => n.type === NODE_TYPES.TABLE);
+  if (tables.length === 0) return "-- Nenhuma tabela encontrada para gerar SQL.";
+
+  return tables.map(table => {
+    let sql = `CREATE TABLE ${table.label.replace(/\s+/g, '_').toLowerCase()} (\n`;
+    const pks = [];
+    const colDefs = (table.columns || []).map(col => {
+      if (col.isPk) pks.push(col.name);
+      return `  ${col.name} ${col.type}${col.isFk ? ' -- FK' : ''}`;
+    });
+
+    if (pks.length > 0) {
+      colDefs.push(`  PRIMARY KEY (${pks.join(', ')})`);
+    }
+
+    sql += colDefs.join(',\n');
+    sql += `\n);`;
+    return sql;
+  }).join('\n\n');
+};
+
+const SQLPanel = ({ nodes, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  const sqlCode = useMemo(() => generateSQL(nodes), [nodes]);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(sqlCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="w-96 bg-slate-900 border-l border-slate-700 shadow-2xl transition-all duration-300 z-30 flex flex-col h-full absolute right-0 top-0 text-slate-300">
+      <div className="p-4 border-b border-slate-700 flex items-center justify-between bg-slate-950">
+        <div className="flex items-center gap-2">
+          <Code size={18} className="text-indigo-400" />
+          <h2 className="text-sm font-bold text-white uppercase tracking-widest">SQL Gerado</h2>
+        </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={20} /></button>
+      </div>
+      <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed">
+        <pre>{sqlCode}</pre>
+      </div>
+      <div className="p-4 border-t border-slate-700 bg-slate-950">
+        <button
+          onClick={handleCopy}
+          className={`w-full py-3 flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm ${copied ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
+        >
+          {copied ? <><Check size={18} /> Copiado!</> : <><Copy size={18} /> Copiar SQL</>}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
 // COMPONENTE: HEADER
 // ==========================================
 
-const Header = ({ currentMode, setMode, onClear, onShare, onlineUsers, isConnected }) => (
+const Header = ({ currentMode, setMode, onClear, onShare, onlineUsers, isConnected, toggleSql, showSql }) => (
   <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-20 shadow-sm shrink-0">
     <div className="flex items-center gap-4">
       <div className="flex items-center gap-3">
@@ -127,7 +185,15 @@ const Header = ({ currentMode, setMode, onClear, onShare, onlineUsers, isConnect
     </div>
 
     <div className="flex items-center gap-2">
-      {/* Indicador de Usuários Online */}
+      {currentMode === MODES.PHYSICAL && (
+        <button
+          onClick={toggleSql}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all mr-2 ${showSql ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+        >
+          <Code size={14} /> SQL
+        </button>
+      )}
+
       <div className="flex items-center gap-2 mr-4 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-100" title="Usuários nesta sala">
         <Users size={14} />
         <span>{onlineUsers}</span>
@@ -159,7 +225,7 @@ const Toolbar = ({ tool, setTool, currentMode }) => {
   );
 
   return (
-    <aside className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 p-2 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 z-10">
+    <aside className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 p-2 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 z-10 select-none">
       <ToolbarButton icon={MousePointer2} label="Selecionar" active={tool === 'select'} onClick={() => setTool('select')} />
       <div className="w-8 h-px bg-slate-100 mx-auto my-1"></div>
 
@@ -185,7 +251,27 @@ const Toolbar = ({ tool, setTool, currentMode }) => {
 // COMPONENTE: PROPERTIES PANEL
 // ==========================================
 
-const PropertiesPanel = ({ selectedId, nodes, connections, updateNode, updateConnection, deleteSelected }) => {
+const PropertiesPanel = ({ selectedIds, nodes, connections, updateNode, updateConnection, deleteSelected }) => {
+  // Se houver mais de um selecionado, não mostra propriedades (ou mostra modo bulk no futuro)
+  if (selectedIds.length !== 1) {
+    if (selectedIds.length > 1) {
+      return (
+        <div className="w-80 bg-white border-l border-slate-200 shadow-xl z-20 p-6 flex flex-col justify-center items-center text-center">
+          <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 mb-4">
+            <Users size={24} />
+          </div>
+          <h3 className="text-slate-800 font-bold mb-1">{selectedIds.length} Itens Selecionados</h3>
+          <p className="text-slate-500 text-xs mb-6">Propriedades em massa indisponíveis.</p>
+          <button onClick={() => deleteSelected()} className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2">
+            <Trash2 size={16} /> Excluir Todos
+          </button>
+        </div>
+      );
+    }
+    return <div className="w-0 transition-all duration-300" />;
+  }
+
+  const selectedId = selectedIds[0];
   const selectedNode = nodes.find(n => n.id === selectedId);
   const selectedConnection = connections.find(c => c.id === selectedId);
 
@@ -196,8 +282,6 @@ const PropertiesPanel = ({ selectedId, nodes, connections, updateNode, updateCon
   const handleUpdateTableCol = (newCols) => {
     if (selectedNode) updateNode(selectedId, { columns: newCols });
   };
-
-  if (!selectedId) return <div className="w-0 transition-all duration-300" />;
 
   return (
     <div className="w-80 bg-white border-l border-slate-200 shadow-xl transition-all duration-300 z-20 overflow-y-auto flex flex-col h-full">
@@ -281,7 +365,7 @@ const PropertiesPanel = ({ selectedId, nodes, connections, updateNode, updateCon
       </div>
 
       <div className="p-6 border-t border-slate-100 bg-slate-50">
-        <button onClick={() => deleteSelected(selectedId)} className="w-full py-3 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm shadow-sm">
+        <button onClick={() => deleteSelected()} className="w-full py-3 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm shadow-sm">
           <Trash2 size={18} /> Excluir Selecionado
         </button>
       </div>
@@ -294,13 +378,13 @@ const PropertiesPanel = ({ selectedId, nodes, connections, updateNode, updateCon
 // ==========================================
 
 const CanvasBoard = ({
-  nodes, connections, tool, selectedId, pan, zoom,
+  nodes, connections, tool, selectedIds, pan, zoom,
   handleCanvasMouseDown, handleMouseMove, handleMouseUp, handleNodeMouseDown,
-  tempConnectionStart, dragStart, cursors, currentUserId
+  tempConnectionStart, dragStart, cursors, currentUserId, selectionBox
 }) => {
 
   const renderNode = (node) => {
-    const isSelected = selectedId === node.id;
+    const isSelected = selectedIds.includes(node.id);
     const strokeClass = isSelected ? THEME.selection : "stroke-slate-800 stroke-2";
     const fillClass = isSelected ? THEME.selectionFill : "fill-white";
     const filter = isSelected ? "url(#glow)" : "drop-shadow(0px 2px 3px rgba(0,0,0,0.1))";
@@ -356,11 +440,12 @@ const CanvasBoard = ({
 
   return (
     <div
-      className="flex-1 bg-slate-50 relative cursor-grab active:cursor-grabbing overflow-hidden h-full w-full"
+      className="flex-1 bg-slate-50 relative cursor-default overflow-hidden h-full w-full"
       onMouseDown={handleCanvasMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onContextMenu={(e) => e.preventDefault()}
       style={{ cursor: tool === 'select' ? 'default' : 'crosshair' }}
     >
       <div id="grid-bg" className="absolute inset-0 pointer-events-none opacity-20" style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: `${20 * zoom}px ${20 * zoom}px`, backgroundPosition: `${pan.x}px ${pan.y}px` }} />
@@ -377,9 +462,10 @@ const CanvasBoard = ({
             const s = nodes.find(n => n.id === conn.source);
             const t = nodes.find(n => n.id === conn.target);
             if (!s || !t) return null;
+            const isSelected = selectedIds.includes(conn.id);
             return (
               <g key={conn.id} className="pointer-events-auto cursor-pointer group">
-                <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke={selectedId === conn.id ? "#6366f1" : "#cbd5e1"} strokeWidth="2" className="transition-colors" />
+                <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke={isSelected ? "#6366f1" : "#cbd5e1"} strokeWidth="2" className="transition-colors" />
                 <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke="transparent" strokeWidth="15" onClick={(e) => { e.stopPropagation(); handleNodeMouseDown(e, conn.id, true); }} />
                 {(conn.cardinalitySource || conn.cardinalityTarget) && (
                   <>
@@ -415,6 +501,21 @@ const CanvasBoard = ({
             )
           ))}
         </g>
+
+        {/* CAIXA DE SELEÇÃO (Não afetada pelo zoom/pan diretamente, desenhada no SVG estático para simplicidade ou aqui transformada) */}
+        {/* Desenhando aqui fora do transform do zoom para ser relativo à tela ou dentro se quisermos coordenadas do mundo. Vamos fazer relativo ao pan/zoom para facilitar cálculo */}
+        {selectionBox && (
+          <rect
+            x={(selectionBox.startX - pan.x) / zoom}
+            y={(selectionBox.startY - pan.y) / zoom}
+            width={(selectionBox.currentX - selectionBox.startX) / zoom}
+            height={(selectionBox.currentY - selectionBox.startY) / zoom}
+            fill="rgba(99, 102, 241, 0.1)"
+            stroke="#6366f1"
+            strokeDasharray="4"
+            className="pointer-events-none"
+          />
+        )}
       </svg>
     </div>
   );
@@ -431,97 +532,90 @@ export default function App() {
   const [connections, setConnections] = useState([]);
 
   // --- Estados de Interface ---
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [tool, setTool] = useState('select');
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [onlineUsers, setOnlineUsers] = useState(0);
+  const [showSql, setShowSql] = useState(false);
 
   // --- Firebase & Colaboração ---
   const [user, setUser] = useState(null);
   const [roomId, setRoomId] = useState(null);
   const [cursors, setCursors] = useState([]);
 
-  // --- Refs ---
+  // --- Refs & Temporários ---
   const tempConnectionStart = useRef(null);
   const isDraggingCanvas = useRef(false);
   const isDraggingNode = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0 });
+  const isSelecting = useRef(false); // Para caixa de seleção
+  const selectionBoxStart = useRef(null);
+  const [selectionBox, setSelectionBox] = useState(null);
+
+  const dragStart = useRef({ x: 0, y: 0 }); // Posição do mouse
   const canvasDragStart = useRef({ x: 0, y: 0 });
-  const canvasRef = useRef(null);
+  const initialNodePositions = useRef({}); // Para mover múltiplos nós
   const lastCursorUpdate = useRef(0);
 
   // 1. INICIALIZAÇÃO E AUTH
   useEffect(() => {
     if (!auth) return;
-
     const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
-      }
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+      else await signInAnonymously(auth);
     };
     initAuth();
-
     const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsubscribe();
   }, []);
 
-  // 2. GESTÃO DE SALA (URL)
+  // 2. GESTÃO DE SALA
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     let rid = params.get('room');
-    if (!rid) {
-      rid = generateId();
-      const newUrl = `${window.location.pathname}?room=${rid}`;
-      window.history.pushState({ path: newUrl }, '', newUrl);
-    }
+    if (!rid) { rid = generateId(); window.history.pushState({ path: `${window.location.pathname}?room=${rid}` }, '', `${window.location.pathname}?room=${rid}`); }
     setRoomId(rid);
   }, []);
 
-  // 3. SINCRONIZAÇÃO DE DADOS (Firestore)
+  // 3. SINCRONIZAÇÃO
   useEffect(() => {
     if (!user || !db || !roomId) return;
-
-    // Listener para o diagrama
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
     const unsubDoc = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        // Mesclagem simples (Last Write Wins para o documento inteiro)
-        // Idealmente usaríamos atualizações parciais, mas para este demo funciona bem
-        if (!isDraggingNode.current) { // Evita "pular" enquanto arrasta
+        if (!isDraggingNode.current) {
           if (JSON.stringify(data.nodes) !== JSON.stringify(nodes)) setNodes(data.nodes || []);
           if (JSON.stringify(data.connections) !== JSON.stringify(connections)) setConnections(data.connections || []);
           if (data.mode && data.mode !== mode) setMode(data.mode);
         }
       } else {
-        // Cria sala se não existir
         setDoc(docRef, { nodes: [], connections: [], mode: MODES.CONCEPTUAL, createdAt: serverTimestamp() });
       }
     });
 
-    // Listener para cursores (presença)
     const cursorQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'cursors'), where('roomId', '==', roomId));
     const unsubCursors = onSnapshot(cursorQuery, (snapshot) => {
       const activeCursors = [];
-      snapshot.forEach(doc => {
-        const d = doc.data();
-        // Filtra cursores muito antigos (opcional, mas bom para limpeza visual)
-        activeCursors.push(d);
-      });
+      snapshot.forEach(doc => activeCursors.push(doc.data()));
       setCursors(activeCursors);
       setOnlineUsers(activeCursors.length);
     });
 
-    return () => {
-      unsubDoc();
-      unsubCursors();
-    };
-  }, [user, roomId]); // Dependências limitadas para evitar re-subscriptions desnecessários
+    return () => { unsubDoc(); unsubCursors(); };
+  }, [user, roomId]);
 
-  // --- Função de Salvamento (Debounced/Throttled via Lógica de Interação) ---
+  // --- Handlers de Zoom e Wheel ---
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (e.ctrlKey || e.metaKey) return; // Deixa o browser dar zoom se quiser
+      const delta = -e.deltaY * 0.001;
+      setZoom(z => Math.min(3, Math.max(0.1, z + delta)));
+    };
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
+
   const saveToFirebase = async (newNodes, newConns, newMode) => {
     if (!db || !roomId) return;
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
@@ -536,48 +630,57 @@ export default function App() {
   const updateCursor = (x, y) => {
     if (!user || !db || !roomId) return;
     const now = Date.now();
-    if (now - lastCursorUpdate.current > 100) { // Throttle 100ms
+    if (now - lastCursorUpdate.current > 100) {
       const cursorRef = doc(db, 'artifacts', appId, 'public', 'data', 'cursors', `${roomId}_${user.uid}`);
-      setDoc(cursorRef, {
-        userId: user.uid,
-        roomId,
-        x,
-        y,
-        color: getRandomColor(),
-        updatedAt: serverTimestamp()
-      });
+      setDoc(cursorRef, { userId: user.uid, roomId, x, y, color: getRandomColor(), updatedAt: serverTimestamp() });
       lastCursorUpdate.current = now;
     }
   };
 
-  // --- Handlers de Interação ---
-
+  // --- Helpers ---
   const getMousePos = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left - pan.x) / zoom,
-      y: (e.clientY - rect.top - pan.y) / zoom
-    };
+    // Coordenadas relativas ao canvas/svg
+    // Precisamos saber onde o canvas está na tela para calcular offset
+    // Como o header e toolbar tiram espaço, clientX/Y não é suficiente se não subtrair
+    // Mas como estamos com layout flex full screen, geralmente clientX funciona menos o offset do Header
+    // Vamos simplificar assumindo que o svg ocupa o resto da tela
+    const headerHeight = 64;
+    const x = (e.clientX - pan.x) / zoom;
+    const y = (e.clientY - headerHeight - pan.y) / zoom;
+    return { x, y, rawX: e.clientX, rawY: e.clientY - headerHeight };
   };
 
   const handleCanvasMouseDown = (e) => {
-    // Clique no fundo
-    if (e.target.id === 'grid-bg' || e.target.tagName === 'svg' || e.target.tagName === 'DIV') {
-      if (tool === 'select') {
-        isDraggingCanvas.current = true;
-        canvasDragStart.current = { x: e.clientX, y: e.clientY };
-        dragStart.current = { ...pan };
-        setSelectedId(null);
-      } else {
-        const pos = getMousePos(e);
-        addNode(pos);
+    const pos = getMousePos(e);
+
+    // Botão Direito (2) -> Pan
+    if (e.button === 2) {
+      isDraggingCanvas.current = true;
+      canvasDragStart.current = { x: e.clientX, y: e.clientY };
+      dragStart.current = { ...pan };
+      return;
+    }
+
+    // Botão Esquerdo (0)
+    if (e.button === 0) {
+      // Clique no fundo (grid ou svg)
+      if (e.target.id === 'grid-bg' || e.target.tagName === 'svg' || e.target.tagName === 'DIV') {
+        if (tool === 'select') {
+          // Iniciar Seleção em Caixa
+          isSelecting.current = true;
+          selectionBoxStart.current = { x: e.clientX, y: e.clientY };
+          setSelectionBox({ startX: pos.rawX, startY: pos.rawY, currentX: pos.rawX, currentY: pos.rawY }); // Usar raw para desenhar ret
+
+          if (!e.shiftKey) setSelectedIds([]); // Limpa se não segurar shift
+        } else {
+          addNode(pos);
+        }
       }
     }
   };
 
   const addNode = (pos) => {
     let newNode = { x: pos.x, y: pos.y, id: generateId(), label: 'Novo Item' };
-
     if (tool === 'entity') newNode = { ...newNode, type: NODE_TYPES.ENTITY, label: 'Entidade', isWeak: false };
     else if (tool === 'relationship') newNode = { ...newNode, type: NODE_TYPES.RELATIONSHIP, label: 'Rel', width: 80, height: 80 };
     else if (tool === 'attribute') newNode = { ...newNode, type: NODE_TYPES.ATTRIBUTE, label: 'Atributo', attrType: 'normal' };
@@ -587,25 +690,19 @@ export default function App() {
     const updatedNodes = [...nodes, newNode];
     setNodes(updatedNodes);
     setTool('select');
-    setSelectedId(newNode.id);
+    setSelectedIds([newNode.id]);
     saveToFirebase(updatedNodes, undefined, undefined);
   };
 
   const handleNodeMouseDown = (e, id, isConnection = false) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Impede evento do canvas
 
     if (tool === 'connection') {
       if (!tempConnectionStart.current) {
         tempConnectionStart.current = id;
       } else {
         if (tempConnectionStart.current !== id) {
-          const newConn = {
-            id: generateId(),
-            source: tempConnectionStart.current,
-            target: id,
-            cardinalitySource: '',
-            cardinalityTarget: '',
-          };
+          const newConn = { id: generateId(), source: tempConnectionStart.current, target: id, cardinalitySource: '', cardinalityTarget: '' };
           const updatedConns = [...connections, newConn];
           setConnections(updatedConns);
           saveToFirebase(undefined, updatedConns, undefined);
@@ -614,17 +711,33 @@ export default function App() {
         setTool('select');
       }
     } else {
-      setSelectedId(id);
-      if (!isConnection) isDraggingNode.current = true;
+      // Lógica de Seleção Múltipla
+      let newSelection = [...selectedIds];
+      if (e.shiftKey) {
+        if (newSelection.includes(id)) newSelection = newSelection.filter(item => item !== id);
+        else newSelection.push(id);
+      } else {
+        if (!newSelection.includes(id)) newSelection = [id];
+        // Se já está selecionado e clicamos sem shift, mantemos a seleção para permitir arrastar o grupo
+      }
+      setSelectedIds(newSelection);
+
+      if (!isConnection) {
+        isDraggingNode.current = true;
+        // Salva posições iniciais de TODOS os nós selecionados para arrasto em grupo
+        const positions = {};
+        nodes.forEach(n => { if (newSelection.includes(n.id)) positions[n.id] = { x: n.x, y: n.y }; });
+        initialNodePositions.current = positions;
+        dragStart.current = getMousePos(e); // Ponto de partida do mouse
+      }
     }
   };
 
   const handleMouseMove = (e) => {
     const pos = getMousePos(e);
-
-    // Atualiza cursor remoto
     updateCursor(pos.x, pos.y);
 
+    // Pan
     if (isDraggingCanvas.current) {
       const dx = e.clientX - canvasDragStart.current.x;
       const dy = e.clientY - canvasDragStart.current.y;
@@ -632,20 +745,77 @@ export default function App() {
       return;
     }
 
-    if (isDraggingNode.current && selectedId) {
-      const updatedNodes = nodes.map(n => n.id === selectedId ? { ...n, x: pos.x, y: pos.y } : n);
+    // Selection Box
+    if (isSelecting.current) {
+      // Atualiza visual da caixa
+      const startRawX = selectionBoxStart.current.x;
+      const startRawY = selectionBoxStart.current.y;
+      // Normaliza para desenhar retangulo corretamente (width/height positivos)
+      // Mas para visualização simples svg, podemos lidar com coords negativas ou math.min
+      // Aqui vamos apenas passar coords atuais para o renderizador SVG lidar ou calcular
+      // Simplificando: vamos passar raw para o SVG renderizar relativo ao container
+      // Ajuste: o SVG renderiza dentro do container abaixo do header
+      const headerH = 64;
+      setSelectionBox({
+        startX: Math.min(startRawX, e.clientX),
+        startY: Math.min(startRawY, e.clientY) - headerH,
+        currentX: Math.max(startRawX, e.clientX),
+        currentY: Math.max(startRawY, e.clientY) - headerH
+      });
+      return;
+    }
+
+    // Drag Nodes
+    if (isDraggingNode.current && selectedIds.length > 0) {
+      const dx = pos.x - dragStart.current.x;
+      const dy = pos.y - dragStart.current.y;
+
+      const updatedNodes = nodes.map(n => {
+        if (selectedIds.includes(n.id) && initialNodePositions.current[n.id]) {
+          return {
+            ...n,
+            x: initialNodePositions.current[n.id].x + dx,
+            y: initialNodePositions.current[n.id].y + dy
+          };
+        }
+        return n;
+      });
       setNodes(updatedNodes);
-      // Não salvamos no Firebase a cada pixel arrastado, apenas no final (MouseUp) para performance
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    // Finaliza Drag
     if (isDraggingNode.current) {
-      // Salva a posição final no Firebase
       saveToFirebase(nodes, undefined, undefined);
     }
+
+    // Finaliza Pan
     isDraggingCanvas.current = false;
     isDraggingNode.current = false;
+
+    // Finaliza Seleção em Caixa
+    if (isSelecting.current) {
+      isSelecting.current = false;
+      const box = selectionBox;
+      if (box) {
+        // Calcular quais nós estão dentro da caixa
+        // Box está em coordenadas raw (pixel screen relativa ao content)
+        // Precisamos converter box para coordenadas do mundo (zoom/pan)
+        const worldX1 = (box.startX - pan.x) / zoom;
+        const worldY1 = (box.startY - pan.y) / zoom;
+        const worldX2 = (box.currentX - pan.x) / zoom;
+        const worldY2 = (box.currentY - pan.y) / zoom;
+
+        const inside = nodes.filter(n => {
+          return n.x >= worldX1 && n.x <= worldX2 && n.y >= worldY1 && n.y <= worldY2;
+        }).map(n => n.id);
+
+        // Se segurou shift, adiciona, senão substitui
+        setSelectedIds(prev => e.shiftKey ? [...new Set([...prev, ...inside])] : inside);
+      }
+      setSelectionBox(null);
+    }
   };
 
   const updateNode = (id, changes) => {
@@ -661,40 +831,35 @@ export default function App() {
   };
 
   const deleteSelected = (idOverride) => {
-    const idToDelete = idOverride || selectedId;
-    if (!idToDelete) return;
+    const idsToDelete = idOverride ? [idOverride] : selectedIds;
+    if (idsToDelete.length === 0) return;
 
-    const newNodes = nodes.filter(n => n.id !== idToDelete);
-    const newConns = connections.filter(c => c.source !== idToDelete && c.target !== idToDelete && c.id !== idToDelete);
+    const newNodes = nodes.filter(n => !idsToDelete.includes(n.id));
+    const newConns = connections.filter(c => !idsToDelete.includes(c.id) && !idsToDelete.includes(c.source) && !idsToDelete.includes(c.target));
 
     setNodes(newNodes);
     setConnections(newConns);
-    if (selectedId === idToDelete) setSelectedId(null);
+    setSelectedIds([]);
     saveToFirebase(newNodes, newConns, undefined);
   };
 
   const clearCanvas = () => {
-    if (confirm('Deseja limpar todo o modelo para todos os usuários desta sala?')) {
-      setNodes([]);
-      setConnections([]);
-      setSelectedId(null);
+    if (confirm('Deseja limpar todo o modelo?')) {
+      setNodes([]); setConnections([]); setSelectedIds([]);
       saveToFirebase([], [], undefined);
     }
   };
 
   const handleShare = () => {
     const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => alert('Link da sala copiado! Envie para seus colegas.'));
+    navigator.clipboard.writeText(url).then(() => alert('Link copiado!'));
   };
 
-  const changeMode = (m) => {
-    setMode(m);
-    saveToFirebase(undefined, undefined, m);
-  }
+  const changeMode = (m) => { setMode(m); saveToFirebase(undefined, undefined, m); };
 
   return (
     <div className="w-full h-screen flex flex-col bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
-      <Header currentMode={mode} setMode={changeMode} onClear={clearCanvas} onShare={handleShare} onlineUsers={onlineUsers} isConnected={!!user} />
+      <Header currentMode={mode} setMode={changeMode} onClear={clearCanvas} onShare={handleShare} onlineUsers={onlineUsers} isConnected={!!user} toggleSql={() => setShowSql(!showSql)} showSql={showSql} />
 
       <div className="flex-1 flex relative overflow-hidden">
         <Toolbar tool={tool} setTool={setTool} currentMode={mode} />
@@ -703,7 +868,7 @@ export default function App() {
           nodes={nodes}
           connections={connections}
           tool={tool}
-          selectedId={selectedId}
+          selectedIds={selectedIds}
           pan={pan}
           zoom={zoom}
           handleCanvasMouseDown={handleCanvasMouseDown}
@@ -714,11 +879,14 @@ export default function App() {
           dragStart={dragStart.current}
           cursors={cursors}
           currentUserId={user?.uid}
+          selectionBox={selectionBox}
         />
+
+        {showSql && mode === MODES.PHYSICAL && <SQLPanel nodes={nodes} onClose={() => setShowSql(false)} />}
 
         <div className="absolute bottom-6 left-6 flex gap-2 z-10">
           <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-1 flex items-center gap-1">
-            <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"><ZoomOut size={18} /></button>
+            <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"><ZoomOut size={18} /></button>
             <span className="text-xs font-bold w-12 text-center text-slate-600 tabular-nums">{Math.round(zoom * 100)}%</span>
             <button onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"><ZoomIn size={18} /></button>
           </div>
@@ -726,7 +894,7 @@ export default function App() {
         </div>
 
         <PropertiesPanel
-          selectedId={selectedId}
+          selectedIds={selectedIds}
           nodes={nodes}
           connections={connections}
           updateNode={updateNode}
