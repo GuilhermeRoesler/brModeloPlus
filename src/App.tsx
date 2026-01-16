@@ -3,7 +3,8 @@ import {
   MousePointer2, Square, Diamond, Circle, Minus, Trash2,
   Download, Upload, Grid, MoreVertical, X, Plus,
   Table as TableIcon, ZoomIn, ZoomOut, Share2, Users,
-  Code, Copy, Check, LogOut, FolderPlus, FolderOpen, ArrowLeft, LayoutGrid
+  Code, Copy, Check, LogOut, FolderPlus, FolderOpen, ArrowLeft, LayoutGrid,
+  Globe
 } from 'lucide-react';
 
 // Importações do Firebase
@@ -13,7 +14,9 @@ import {
   signInAnonymously,
   onAuthStateChanged,
   signInWithCustomToken,
-  signOut
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -459,27 +462,38 @@ const CanvasBoard = ({
 // TELA: LOGIN
 // ==========================================
 
-const LoginScreen = ({ onLogin, loading }) => (
+const LoginScreen = ({ onLoginGoogle, onLoginGuest, loading }) => (
   <div className="w-full h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-100 text-center">
       <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 mx-auto mb-6">
         <Grid className="text-white" size={32} />
       </div>
       <h1 className="text-2xl font-bold text-slate-800 mb-2">BrModelo<span className="text-indigo-600">Plus</span></h1>
-      <p className="text-slate-500 mb-8">Modelagem de dados moderna e colaborativa.</p>
+      <p className="text-slate-500 mb-8">Modelagem de dados moderna na nuvem.</p>
 
       <button
-        onClick={onLogin}
+        onClick={onLoginGoogle}
         disabled={loading}
-        className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-3"
       >
         {loading ? (
-          <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          <span className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
         ) : (
-          <>Entrar como Convidado <ArrowLeft className="rotate-180" size={16} /></>
+          <>
+            <Globe size={18} className="text-indigo-600" /> Entrar com Google
+          </>
         )}
       </button>
-      <p className="text-xs text-slate-400 mt-6">Seus projetos serão salvos localmente neste navegador.</p>
+
+      <button
+        onClick={onLoginGuest}
+        disabled={loading}
+        className="w-full py-3.5 text-slate-400 hover:text-indigo-600 rounded-xl font-medium text-sm transition-all hover:bg-indigo-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        Continuar como Convidado
+      </button>
+
+      <p className="text-xs text-slate-300 mt-6">Ao usar o modo convidado, os dados podem ser perdidos ao limpar o navegador.</p>
     </div>
   </div>
 );
@@ -545,9 +559,16 @@ const DashboardScreen = ({ user, onOpenProject, onLogout }) => {
           </div>
           <h1 className="font-bold text-slate-800">Meus Projetos</h1>
         </div>
-        <button onClick={onLogout} className="text-slate-500 hover:text-red-600 flex items-center gap-2 text-sm font-medium">
-          <LogOut size={16} /> Sair
-        </button>
+        <div className="flex items-center gap-4">
+          {user.isAnonymous ? (
+            <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">Convidado</span>
+          ) : (
+            <span className="text-xs font-medium text-slate-500">{user.email}</span>
+          )}
+          <button onClick={onLogout} className="text-slate-500 hover:text-red-600 flex items-center gap-2 text-sm font-medium">
+            <LogOut size={16} /> Sair
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-8">
@@ -1033,12 +1054,24 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = async () => {
+  const handleLoginGuest = async () => {
     setAuthLoading(true);
     if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
       await signInWithCustomToken(auth, __initial_auth_token);
     } else {
       await signInAnonymously(auth);
+    }
+  };
+
+  const handleLoginGoogle = async () => {
+    setAuthLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      console.error(e);
+      setAuthLoading(false);
+      alert('Erro ao entrar com Google. Verifique se o popup não foi bloqueado ou se o domínio está autorizado no Firebase.');
     }
   };
 
@@ -1060,7 +1093,7 @@ export default function App() {
   };
 
   if (!user) {
-    return <LoginScreen onLogin={handleLogin} loading={authLoading} />;
+    return <LoginScreen onLoginGoogle={handleLoginGoogle} onLoginGuest={handleLoginGuest} loading={authLoading} />;
   }
 
   if (roomId) {
