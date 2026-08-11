@@ -53,12 +53,17 @@ export type ErNode = Node<ErNodeData, NodeType>;
 /** Aresta do diagrama = Edge do React Flow. */
 export type ErEdge = Edge<ErEdgeData>;
 
-/** Versão atual do documento de sala (RF-native). */
-export const ROOM_VERSION = 2 as const;
-
-export interface RoomData {
+/** Diagrama independente de um modo (conceitual / lógico / físico). */
+export type ModeDiagram = {
   nodes: ErNode[];
   edges: ErEdge[];
+};
+
+/** Versão atual do documento de sala (um canvas por modo). */
+export const ROOM_VERSION = 3 as const;
+
+export interface RoomData {
+  diagrams: Record<Mode, ModeDiagram>;
   mode: Mode;
   version: typeof ROOM_VERSION;
 }

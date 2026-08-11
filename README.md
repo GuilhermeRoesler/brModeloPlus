@@ -8,9 +8,9 @@
 
 ## Funcionalidades
 
-- **3 modos de modelagem**
+- **3 modos de modelagem** — cada um com **canvas próprio** (diagramas independentes; trocar de aba não mistura nós)
   - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (haste vertical sob o dono, círculo + rótulo à direita; chave / derivado / multivalorado).
-  - **Lógico:** estruturas relacionais.
+  - **Lógico:** estruturas relacionais (tabelas).
   - **Físico:** tabelas, colunas, tipos, PK/FK e geração de SQL DDL.
 - **Editor**
   - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto.

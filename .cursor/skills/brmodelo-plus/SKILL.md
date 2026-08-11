@@ -59,13 +59,23 @@ Nós do editor são **HTML/CSS**; arestas usam o SVG interno do React Flow (`Bas
 
 Tudo em `localStorage` via `src/lib/localStorage.ts` + `src/services/projects.ts` e `rooms.ts`.
 
-Documento de sala (`RoomData`):
+Documento de sala (`RoomData`, `ROOM_VERSION = 3`):
 
 ```ts
-{ nodes: ErNode[], edges: ErEdge[], mode: Mode, version: 2 }
+{
+  diagrams: {
+    conceitual: { nodes, edges },
+    logico: { nodes, edges },
+    fisico: { nodes, edges },
+  },
+  mode: Mode,
+  version: 3
+}
 ```
 
-Leitura direta do JSON no `localStorage` — sem normalização/migração.
+Cada modo tem **canvas e diagrama próprios**. Trocar de modo no header salva o diagrama atual e carrega o do destino (`ReactFlowProvider key={mode}`).
+
+`normalizeRoomData` em `lib/localStorage.ts` migra documentos v2 (um único `nodes`/`edges`) para o modo que estava salvo; salas novas já nascem com três diagramas vazios.
 
 ## Domínio do diagrama (100% React Flow)
 
@@ -92,8 +102,9 @@ SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
 
 ### Editor — comportamentos atuais
 
-Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` + `useNodesState` / `useEdgesState`); canvas em `CanvasBoard.tsx` (wrapper fino do `<ReactFlow>`).
+Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` por modo + `useNodesState` / `useEdgesState` do diagrama ativo); canvas em `CanvasBoard.tsx` (wrapper fino do `<ReactFlow>`).
 
+- **Três canvas** — conceitual, lógico e físico com `nodes`/`edges` independentes; o estado ativo espelha `diagrams[mode]`
 - **Seleção / pan / zoom / box select / Delete·Backspace** — nativos do React Flow; scroll = zoom; seleção lida de `node.selected` / `edge.selected`
 - **Drag estrutural** — ao mover entidade/relacionamento, atributos ligados (incl. compostos) acompanham o mesmo delta (`followStructuralDrags`); ids já no lote de drag não são deslocados de novo (multi-seleção)
 - **Conexões** — tool `connection`: handle→handle (`ConnectionMode.Loose`)

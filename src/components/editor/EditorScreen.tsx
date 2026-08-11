@@ -31,6 +31,7 @@ import {
   patchNodeData,
   positionRightOf,
 } from '../../lib/diagramFlow';
+import { createEmptyDiagrams } from '../../lib/localStorage';
 import { topLeftFromCenter } from '../../lib/nodeGeometry';
 import { generateId } from '../../lib/utils';
 import {
@@ -42,6 +43,7 @@ import {
   type ErNode,
   type ErNodeData,
   type Mode,
+  type ModeDiagram,
   type Tool,
 } from '../../types';
 import { CanvasBoard } from './CanvasBoard';
@@ -114,6 +116,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const edgesRef = useRef(edges);
   const modeRef = useRef(mode);
   const editingLabelIdRef = useRef(editingLabelId);
+  const diagramsRef = useRef<Record<Mode, ModeDiagram>>(createEmptyDiagrams());
 
   nodesRef.current = nodes;
   edgesRef.current = edges;
@@ -129,10 +132,16 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
   const persist = useCallback(
     (newNodes?: ErNode[], newEdges?: ErEdge[], newMode?: Mode) => {
+      const activeMode = newMode ?? modeRef.current;
+      const nextNodes = newNodes ?? nodesRef.current;
+      const nextEdges = newEdges ?? edgesRef.current;
+      diagramsRef.current = {
+        ...diagramsRef.current,
+        [activeMode]: { nodes: nextNodes, edges: nextEdges },
+      };
       void saveRoom(roomId, {
-        nodes: newNodes ?? nodesRef.current,
-        edges: newEdges ?? edgesRef.current,
-        mode: newMode ?? modeRef.current,
+        diagrams: diagramsRef.current,
+        mode: activeMode,
         version: ROOM_VERSION,
       });
     },
@@ -143,9 +152,21 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     setRoomReady(false);
     const unsub = subscribeToRoom(roomId, {
       onRoomData: (data) => {
-        setNodes(data.nodes);
-        setEdges(data.edges);
+        diagramsRef.current = data.diagrams;
+        const active = data.diagrams[data.mode] ?? {
+          nodes: [],
+          edges: [],
+        };
         setMode(data.mode);
+        modeRef.current = data.mode;
+        setNodes(active.nodes);
+        setEdges(active.edges);
+        nodesRef.current = active.nodes;
+        edgesRef.current = active.edges;
+        setTool('select');
+        setEditingLabelId(null);
+        editingLabelIdRef.current = null;
+        setShowSql(false);
         setRoomReady(true);
       },
     });
@@ -589,8 +610,34 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   };
 
   const handleChangeMode = (m: Mode) => {
+    if (m === modeRef.current) return;
+
+    diagramsRef.current = {
+      ...diagramsRef.current,
+      [modeRef.current]: {
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+      },
+    };
+
+    const next = diagramsRef.current[m] ?? { nodes: [], edges: [] };
     setMode(m);
-    persist(undefined, undefined, m);
+    modeRef.current = m;
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    nodesRef.current = next.nodes;
+    edgesRef.current = next.edges;
+    setTool('select');
+    setEditingLabelId(null);
+    editingLabelIdRef.current = null;
+    if (m !== MODES.PHYSICAL) setShowSql(false);
+
+    void saveRoom(roomId, {
+      diagrams: diagramsRef.current,
+      mode: m,
+      version: ROOM_VERSION,
+    });
+    requestFit();
   };
 
   const handleAutoLayout = () => {
@@ -615,52 +662,52 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
         onToggleSql={() => setShowSql((v) => !v)}
       />
 
-      <div className="flex-1 flex relative overflow-hidden">
-        <Toolbar
-          tool={tool}
-          setTool={setTool}
-          currentMode={mode}
-          onAutoLayout={handleAutoLayout}
-        />
+      <ReactFlowProvider key={mode}>
+        <div className="flex-1 flex relative overflow-hidden">
+          <Toolbar
+            tool={tool}
+            setTool={setTool}
+            currentMode={mode}
+            onAutoLayout={handleAutoLayout}
+          />
 
-        <CanvasBoard
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgesChange}
-          tool={tool}
-          onConnect={handleConnect}
-          onPaneAddNode={addNodeAt}
-          editingLabelId={editingLabelId}
-          onInlineLabelChange={handleInlineLabelChange}
-          onInlineLabelEnd={handleInlineLabelEnd}
-          onInlineLabelSubmit={handleInlineLabelSubmit}
-          onInlineLabelTab={handleInlineLabelTab}
-          onCycleEdgeCardinality={handleCycleEdgeCardinality}
-          fitRequestId={fitRequestId}
-        />
+          <CanvasBoard
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
+            tool={tool}
+            onConnect={handleConnect}
+            onPaneAddNode={addNodeAt}
+            editingLabelId={editingLabelId}
+            onInlineLabelChange={handleInlineLabelChange}
+            onInlineLabelEnd={handleInlineLabelEnd}
+            onInlineLabelSubmit={handleInlineLabelSubmit}
+            onInlineLabelTab={handleInlineLabelTab}
+            onCycleEdgeCardinality={handleCycleEdgeCardinality}
+            fitRequestId={fitRequestId}
+          />
 
-        {showSql && mode === MODES.PHYSICAL && (
-          <SQLPanel nodes={nodes} onClose={() => setShowSql(false)} />
-        )}
+          {showSql && mode === MODES.PHYSICAL && (
+            <SQLPanel nodes={nodes} onClose={() => setShowSql(false)} />
+          )}
 
-        <ZoomControls />
+          <ZoomControls />
 
-        <PropertiesPanel
-          selectedIds={selectedIds}
-          nodes={nodes}
-          edges={edges}
-          updateNode={updateNode}
-          updateEdge={updateEdge}
-          deleteSelected={deleteSelected}
-        />
-      </div>
+          <PropertiesPanel
+            selectedIds={selectedIds}
+            nodes={nodes}
+            edges={edges}
+            updateNode={updateNode}
+            updateEdge={updateEdge}
+            deleteSelected={deleteSelected}
+          />
+        </div>
+      </ReactFlowProvider>
     </div>
   );
 };
 
 export const EditorScreen = (props: EditorScreenProps) => (
-  <ReactFlowProvider>
-    <EditorWorkspace {...props} />
-  </ReactFlowProvider>
+  <EditorWorkspace {...props} />
 );
