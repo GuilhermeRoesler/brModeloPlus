@@ -84,7 +84,9 @@ Helpers em `lib/diagramFlow.ts`: `createErNode` / `createErEdge`, `findAttribute
 
 Centros geométricos: `getNodeCenter` em `lib/nodeGeometry.ts`.
 
-No modo conceitual: entidades, relacionamentos, atributos (notação **Heuser**).  
+No modo conceitual: entidades, relacionamentos, atributos na notação **Heuser**
+(círculo oco sob o dono, haste vertical a partir da base, rótulo à direita;
+chave = círculo preenchido + rótulo sublinhado; derivado = tracejado; multivalorado = círculo duplo).
 Nos modos lógico/físico: tabelas + colunas (PK/FK).  
 SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
 
@@ -94,10 +96,12 @@ Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` + `u
 
 - **Seleção / pan / zoom / box select / Delete·Backspace** — nativos do React Flow; scroll = zoom; seleção lida de `node.selected` / `edge.selected`
 - **Conexões** — tool `connection`: handle→handle (`ConnectionMode.Loose`)
-- **Auto layout** (`lib/autoLayout.ts`): **ELK.js stress** em **todos** os nós + edges
+- **Auto layout** (`lib/autoLayout.ts`): **ELK.js stress** nos nós estruturais; atributos Heuser reposicionados em cascata sob o dono
 - **`commitDiagram`**: async; `{ fit?, layout? }` — Enter/conexões usam `layout: false`
-- **Enter (conceitual):** cria atributo ligado à direita do dono, edição inline; Esc / blur finaliza
+- **Enter (conceitual):** cria atributo ligado **abaixo** do dono (cascata Heuser), edição inline; Esc / blur finaliza
 - **Viewport / fit:** `fitView` via `fitRequestId`
+
+Helpers Heuser em `lib/diagramFlow.ts`: `heuserAttributePosition`, `layoutHeuserAttributes`, `linkedAttributesOf`.
 
 ## Como alterar (receitas)
 
@@ -113,9 +117,9 @@ Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` + `u
 
 ### Auto layout / posicionamento
 
-1. Algoritmo em `lib/autoLayout.ts` (ELK stress em todos os nós)
+1. Algoritmo em `lib/autoLayout.ts` (ELK stress nos estruturais + cascata Heuser nos atributos)
 2. Chamada via `commitDiagram` / toolbar
-3. Atributos rápidos (Enter): offset simples à direita do dono + edge + `layout: false`
+3. Atributos rápidos (Enter): `heuserAttributePosition` + `layoutHeuserAttributes` sob o dono + edge + `layout: false`
 
 ## Convenções de código
 

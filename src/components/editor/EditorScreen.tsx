@@ -17,11 +17,14 @@ import {
   createErEdge,
   createErNode,
   findAttributeOwnerId,
+  heuserAttributePosition,
+  layoutHeuserAttributes,
+  linkedAttributesOf,
   normalizeErEdges,
   normalizeErNodes,
   patchNodeData,
 } from '../../lib/diagramFlow';
-import { getNodeSize, topLeftFromCenter } from '../../lib/nodeGeometry';
+import { topLeftFromCenter } from '../../lib/nodeGeometry';
 import { generateId } from '../../lib/utils';
 import {
   MODES,
@@ -242,18 +245,6 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     setTool('select');
   };
 
-  const linkedAttributesOf = (ownerId: string) => {
-    const attrs: ErNode[] = [];
-    for (const e of edgesRef.current) {
-      const other =
-        e.source === ownerId ? e.target : e.target === ownerId ? e.source : null;
-      if (!other) continue;
-      const n = nodesRef.current.find((x) => x.id === other);
-      if (n?.type === NODE_TYPES.ATTRIBUTE) attrs.push(n);
-    }
-    return attrs;
-  };
-
   const createLinkedAttribute = (ownerId: string) => {
     const owner = nodesRef.current.find((n) => n.id === ownerId);
     if (!owner) return;
@@ -264,14 +255,18 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       return;
     }
 
-    const siblings = linkedAttributesOf(ownerId);
-    const ownerSize = getNodeSize(owner);
-    const topLeft = {
-      x: owner.position.x + ownerSize.width + 48,
-      y: owner.position.y + siblings.length * 28,
-    };
-
+    const siblings = linkedAttributesOf(
+      ownerId,
+      nodesRef.current,
+      edgesRef.current,
+    );
     const attrId = generateId();
+    const topLeft = heuserAttributePosition(
+      owner,
+      siblings.length,
+      siblings.length + 1,
+    );
+
     const newAttr = createErNode({
       id: attrId,
       type: NODE_TYPES.ATTRIBUTE,
@@ -289,12 +284,11 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
     const cleared = nodesRef.current.map((n) => ({ ...n, selected: false }));
     const clearedEdges = edgesRef.current.map((e) => ({ ...e, selected: false }));
+    const withAttr = [...cleared, newAttr];
+    const withEdge = [...clearedEdges, newEdge];
+    const laidOut = layoutHeuserAttributes(ownerId, withAttr, withEdge);
 
-    void commitDiagram(
-      [...cleared, newAttr],
-      [...clearedEdges, newEdge],
-      { fit: false, layout: false },
-    );
+    void commitDiagram(laidOut, withEdge, { fit: false, layout: false });
     setTool('select');
     editingLabelIdRef.current = attrId;
     setEditingLabelId(attrId);

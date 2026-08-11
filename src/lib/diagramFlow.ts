@@ -34,6 +34,91 @@ export const findAttributeOwnerId = (
   );
 };
 
+/** Atributos ligados diretamente a um dono estrutural (entidade/relacionamento). */
+export const linkedAttributesOf = (
+  ownerId: string,
+  nodes: ErNode[],
+  edges: ErEdge[],
+): ErNode[] => {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const attrs: ErNode[] = [];
+  for (const e of edges) {
+    const other =
+      e.source === ownerId ? e.target : e.target === ownerId ? e.source : null;
+    if (!other) continue;
+    const n = byId.get(other);
+    if (n?.type === NODE_TYPES.ATTRIBUTE) attrs.push(n);
+  }
+  return attrs;
+};
+
+const ATTR_NODE = 20;
+const HEUSER_BASE_GAP = 28;
+const HEUSER_STEP_Y = 28;
+const HEUSER_PAD_X = 16;
+
+/**
+ * Posições Heuser: atributos sob o dono, hastes verticais escalonadas
+ * (esquerda = mais longa). Rótulo fica à direita do círculo no nó.
+ */
+export const heuserAttributePosition = (
+  owner: ErNode,
+  index: number,
+  total: number,
+): { x: number; y: number } => {
+  const { width, height } = getNodeSize(owner);
+  const n = Math.max(total, 1);
+  const usableW = Math.max(width - HEUSER_PAD_X * 2, 0);
+  const spacing = n <= 1 ? 0 : Math.min(36, usableW / (n - 1));
+  const cx =
+    n <= 1
+      ? owner.position.x + width / 2
+      : owner.position.x + HEUSER_PAD_X + index * spacing;
+  // índice 0 à esquerda = haste mais longa (como na notação clássica)
+  const depth = n - 1 - index;
+  return {
+    x: Math.round(cx - ATTR_NODE / 2),
+    y: Math.round(
+      owner.position.y + height + HEUSER_BASE_GAP + depth * HEUSER_STEP_Y,
+    ),
+  };
+};
+
+/** Reaplica cascata Heuser aos atributos diretos do dono (ordem estável por id). */
+export const layoutHeuserAttributes = (
+  ownerId: string,
+  nodes: ErNode[],
+  edges: ErEdge[],
+): ErNode[] => {
+  const owner = nodes.find((n) => n.id === ownerId);
+  if (
+    !owner ||
+    (owner.type !== NODE_TYPES.ENTITY &&
+      owner.type !== NODE_TYPES.RELATIONSHIP)
+  ) {
+    return nodes;
+  }
+
+  const attrs = linkedAttributesOf(ownerId, nodes, edges).sort(
+    (a, b) =>
+      a.position.x - b.position.x || a.position.y - b.position.y,
+  );
+  if (attrs.length === 0) return nodes;
+
+  const positions = new Map(
+    attrs.map((attr, i) => [
+      attr.id,
+      heuserAttributePosition(owner, i, attrs.length),
+    ]),
+  );
+
+  return nodes.map((n) => {
+    const p = positions.get(n.id);
+    if (!p) return n;
+    return { ...n, position: p };
+  });
+};
+
 export const createErNode = (opts: {
   id: string;
   type: NodeType;

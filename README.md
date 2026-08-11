@@ -9,15 +9,15 @@
 ## Funcionalidades
 
 - **3 modos de modelagem**
-  - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (círculo + rótulo; chave / derivado / multivalorado).
+  - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (haste vertical sob o dono, círculo + rótulo à direita; chave / derivado / multivalorado).
   - **Lógico:** estruturas relacionais.
   - **Físico:** tabelas, colunas, tipos, PK/FK e geração de SQL DDL.
 - **Editor**
   - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**.
   - Painel de propriedades.
-  - **Auto layout** (**ELK.js stress** em todos os nós do diagrama).
+  - **Auto layout** (**ELK.js stress** nos nós estruturais; atributos Heuser em cascata sob o dono).
   - **Conectar:** arrastar handle→handle (modo Conectar).
-  - **Enter** (modo conceitual): cria atributo ligado com edição inline do nome.
+  - **Enter** (modo conceitual): cria atributo ligado abaixo do dono com edição inline do nome.
 - **Geração de SQL:** `CREATE TABLE` a partir do modelo físico.
 - **Projetos locais:** criar, listar e excluir diagramas (`localStorage`).
 
