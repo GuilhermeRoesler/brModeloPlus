@@ -24,6 +24,9 @@ export type Tool =
   | 'table'
   | 'connection';
 
+/** Espaço de coordenadas dos nós: top-left nativo do React Flow. */
+export type CoordSpace = 'topLeft' | 'center';
+
 export interface TableColumn {
   id: string;
   name: string;
@@ -32,6 +35,10 @@ export interface TableColumn {
   isFk?: boolean;
 }
 
+/**
+ * Nó do diagrama.
+ * `x`/`y` = canto superior esquerdo (mesmo modelo do React Flow).
+ */
 export interface DiagramNode {
   id: string;
   x: number;
@@ -40,8 +47,6 @@ export interface DiagramNode {
   type: NodeType;
   isWeak?: boolean;
   attrType?: AttrType;
-  width?: number;
-  height?: number;
   columns?: TableColumn[];
 }
 
@@ -57,6 +62,8 @@ export interface RoomData {
   nodes: DiagramNode[];
   connections: Connection[];
   mode: Mode;
+  /** Ausente ou `'center'` = legado (migrado na leitura). */
+  coordSpace?: CoordSpace;
 }
 
 export interface TimestampLike {
@@ -89,11 +96,4 @@ export interface RemoteCursor {
 export interface Point {
   x: number;
   y: number;
-}
-
-export interface SelectionBox {
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
 }

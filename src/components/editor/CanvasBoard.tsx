@@ -1,249 +1,112 @@
-import type { MouseEvent } from 'react';
-import { MousePointer2 } from 'lucide-react';
-import { THEME } from '../../config/constants';
 import {
-  NODE_TYPES,
-  type Connection,
-  type DiagramNode,
-  type Point,
-  type RemoteCursor,
-  type SelectionBox,
-  type Tool,
-} from '../../types';
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
+import {
+  Background,
+  BackgroundVariant,
+  ConnectionMode,
+  ReactFlow,
+  applyNodeChanges,
+  useReactFlow,
+  type Connection as RfConnection,
+  type Edge,
+  type NodeChange,
+  type OnSelectionChangeParams,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { updateRemoteCursor } from '../../services/rooms';
+import {
+  fromFlowNodes,
+  pruneChildSelection,
+  toFlowEdges,
+  toFlowNodes,
+  type DiagramFlowNode,
+} from '../../lib/reactFlowAdapter';
+import type { Connection, DiagramNode, RemoteCursor, Tool } from '../../types';
+import { AttributeNode } from './flow/AttributeNode';
+import { CardinalityEdge } from './flow/CardinalityEdge';
+import { DiagramFlowProvider } from './flow/DiagramFlowContext';
+import { EntityNode, RelationshipNode, TableNode } from './flow/nodes';
+import { RemoteCursors } from './flow/RemoteCursors';
+
+const nodeTypes = {
+  entity: EntityNode,
+  relationship: RelationshipNode,
+  attribute: AttributeNode,
+  table: TableNode,
+};
+
+const edgeTypes = {
+  cardinality: CardinalityEdge,
+};
 
 type CanvasBoardProps = {
   nodes: DiagramNode[];
   connections: Connection[];
   tool: Tool;
   selectedIds: string[];
-  pan: Point;
-  zoom: number;
-  handleCanvasMouseDown: (e: MouseEvent) => void;
-  handleMouseMove: (e: MouseEvent) => void;
-  handleMouseUp: (e: MouseEvent) => void;
-  handleNodeMouseDown: (e: MouseEvent, id: string, isConnection?: boolean) => void;
-  tempConnectionStart: string | null;
-  dragStart: Point;
+  onSelectedIdsChange: (ids: string[]) => void;
+  onPersistNodes: (nodes: DiagramNode[]) => void;
+  onDraggingChange?: (dragging: boolean) => void;
+  onConnect: (source: string, target: string) => void;
+  onPaneAddNode: (flowPos: { x: number; y: number }) => void;
   cursors: RemoteCursor[];
   currentUserId?: string;
-  selectionBox: SelectionBox | null;
+  roomId: string;
   editingLabelId?: string | null;
   onInlineLabelChange?: (id: string, label: string) => void;
   onInlineLabelEnd?: (id: string) => void;
   onInlineLabelSubmit?: (id: string) => void;
+  fitRequestId?: number;
 };
 
-type InlineEditHandlers = {
-  isEditing: boolean;
-  onChange: (label: string) => void;
-  onEnd: () => void;
-  onSubmit: () => void;
+const FitController = ({ fitRequestId }: { fitRequestId: number }) => {
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    if (fitRequestId <= 0) return;
+    const t = requestAnimationFrame(() => {
+      void fitView({ padding: 0.18, duration: 200, maxZoom: 1.15, minZoom: 0.35 });
+    });
+    return () => cancelAnimationFrame(t);
+  }, [fitRequestId, fitView]);
+  return null;
 };
 
-const STRUCTURAL_TYPES = new Set<string>([
-  NODE_TYPES.ENTITY,
-  NODE_TYPES.RELATIONSHIP,
-  NODE_TYPES.TABLE,
-]);
+/** Conteúdo do diagrama (sem seleção) — remonta RF quando domínio muda. */
+const diagramSignature = (nodes: DiagramNode[], connections: Connection[]) => {
+  const n = nodes
+    .map(
+      (node) =>
+        `${node.id}:${node.x}:${node.y}:${node.label}:${node.type}:${node.isWeak ? 1 : 0}:${node.attrType ?? ''}:${node.columns?.length ?? 0}`,
+    )
+    .join('|');
+  const c = connections
+    .map(
+      (conn) =>
+        `${conn.id}:${conn.source}:${conn.target}:${conn.cardinalitySource}:${conn.cardinalityTarget}`,
+    )
+    .join('|');
+  return `${n}#${c}`;
+};
 
-const renderNode = (
-  node: DiagramNode,
-  isSelected: boolean,
-  editing?: InlineEditHandlers,
-  labelOnLeft = false,
-) => {
-  const strokeClass = isSelected ? THEME.selection : 'stroke-slate-800 stroke-2';
-  const fillClass = isSelected ? THEME.selectionFill : 'fill-white';
-  const filter = isSelected ? 'url(#glow)' : 'drop-shadow(0px 2px 3px rgba(0,0,0,0.1))';
-
-  switch (node.type) {
-    case NODE_TYPES.ENTITY:
-      return (
-        <g transform={`translate(${node.x - 60}, ${node.y - 30})`}>
-          {node.isWeak && (
-            <rect
-              x="-4"
-              y="-4"
-              width="128"
-              height="68"
-              rx="6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              className="text-slate-800"
-            />
-          )}
-          <rect
-            width="120"
-            height="60"
-            rx="4"
-            className={`${fillClass} ${strokeClass} transition-colors`}
-            style={{ filter }}
-          />
-          <foreignObject x="0" y="0" width="120" height="60">
-            <div className="w-full h-full flex items-center justify-center text-center p-1">
-              <span className="text-sm font-semibold text-slate-800 leading-tight select-none">
-                {node.label}
-              </span>
-            </div>
-          </foreignObject>
-        </g>
-      );
-    case NODE_TYPES.RELATIONSHIP:
-      return (
-        <g transform={`translate(${node.x}, ${node.y})`}>
-          <path
-            d="M 0 -40 L 50 0 L 0 40 L -50 0 Z"
-            className={`${fillClass} ${strokeClass} transition-colors`}
-            style={{ filter }}
-          />
-          {node.isWeak && (
-            <path
-              d="M 0 -34 L 42 0 L 0 34 L -42 0 Z"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              className="text-slate-800"
-            />
-          )}
-          <foreignObject x="-40" y="-20" width="80" height="40">
-            <div className="w-full h-full flex items-center justify-center text-center">
-              <span className="text-xs font-bold text-slate-800 select-none">{node.label}</span>
-            </div>
-          </foreignObject>
-        </g>
-      );
-    case NODE_TYPES.ATTRIBUTE: {
-      const r = 10;
-      const isKey = node.attrType === 'key';
-      const isDerived = node.attrType === 'derived';
-      const isMulti = node.attrType === 'multivalued';
-      const circleFill = isKey
-        ? isSelected
-          ? 'fill-indigo-500'
-          : 'fill-slate-800'
-        : fillClass;
-      const displayLabel = node.label || 'Atributo';
-      const labelWidth = Math.max(48, displayLabel.length * 7 + 8);
-      const editWidth = Math.max(96, labelWidth + 24);
-      const textW = editing?.isEditing ? editWidth : labelWidth;
-      const hitX = labelOnLeft ? -r - 4 - textW : -r - 4;
-
-      return (
-        <g transform={`translate(${node.x}, ${node.y})`}>
-          <rect
-            x={hitX}
-            y={-r - 6}
-            width={r + 8 + textW}
-            height={r * 2 + 12}
-            fill="transparent"
-          />
-          <circle
-            cx="0"
-            cy="0"
-            r={r}
-            className={`${circleFill} ${strokeClass} transition-colors`}
-            style={{ filter }}
-            strokeDasharray={isDerived ? '3 2' : undefined}
-          />
-          {isMulti && (
-            <circle
-              cx="0"
-              cy="0"
-              r={r - 3.5}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className={isSelected ? 'text-indigo-500' : 'text-slate-800'}
-              strokeDasharray={isDerived ? '3 2' : undefined}
-            />
-          )}
-          {editing?.isEditing ? (
-            <foreignObject
-              x={labelOnLeft ? -r - 4 - editWidth : r + 4}
-              y={-14}
-              width={editWidth}
-              height={28}
-            >
-              <input
-                data-inline-label-edit=""
-                autoFocus
-                value={node.label}
-                placeholder="Atributo"
-                onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => editing.onChange(e.target.value)}
-                onBlur={() => editing.onEnd()}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    editing.onSubmit();
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    editing.onEnd();
-                  }
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                className={`w-full h-7 px-1.5 text-xs font-medium text-slate-800 bg-white border border-indigo-400 rounded shadow-sm outline-none focus:ring-2 focus:ring-indigo-400 ${
-                  labelOnLeft ? 'text-right' : 'text-left'
-                }`}
-              />
-            </foreignObject>
-          ) : (
-            <text
-              x={labelOnLeft ? -r - 6 : r + 6}
-              y="0"
-              dy="0.35em"
-              textAnchor={labelOnLeft ? 'end' : 'start'}
-              className={`text-xs select-none pointer-events-none ${
-                isKey ? 'font-bold fill-slate-900' : 'fill-slate-800'
-              }`}
-            >
-              {displayLabel}
-            </text>
-          )}
-        </g>
-      );
-    }
-    case NODE_TYPES.TABLE: {
-      const rowH = 24;
-      const headH = 32;
-      const w = 160;
-      const h = headH + (node.columns?.length || 0) * rowH + 10;
-      return (
-        <g transform={`translate(${node.x - w / 2}, ${node.y - headH / 2})`}>
-          <rect width={w} height={h} rx="4" className={`${fillClass} ${strokeClass}`} style={{ filter }} />
-          <rect width={w} height={headH} rx="4" className="fill-slate-100 stroke-none" />
-          <line x1="0" y1={headH} x2={w} y2={headH} stroke="currentColor" className="text-slate-300" />
-          <foreignObject x="0" y="0" width={w} height={headH}>
-            <div className="w-full h-full flex items-center justify-center px-2">
-              <span className="font-bold text-sm text-slate-800 truncate">{node.label}</span>
-            </div>
-          </foreignObject>
-          <foreignObject x="0" y={headH} width={w} height={h - headH}>
-            <div className="flex flex-col pt-1 px-2">
-              {node.columns?.map((col) => (
-                <div
-                  key={col.id}
-                  className="flex items-center justify-between h-[24px] text-[10px] text-slate-700 border-b border-slate-50 last:border-0"
-                >
-                  <div className="flex items-center gap-1 overflow-hidden">
-                    {col.isPk && <span className="text-[9px] font-bold text-amber-600">PK</span>}
-                    {col.isFk && <span className="text-[9px] font-bold text-blue-600">FK</span>}
-                    <span className={`truncate ${col.isPk ? 'font-bold' : ''}`}>{col.name}</span>
-                  </div>
-                  <span className="text-slate-400 text-[9px] ml-1 shrink-0">{col.type}</span>
-                </div>
-              ))}
-            </div>
-          </foreignObject>
-        </g>
-      );
-    }
-    default:
-      return null;
-  }
+const applySelection = (
+  rfNodes: DiagramFlowNode[],
+  selectedIds: string[],
+): DiagramFlowNode[] => {
+  const selected = new Set(selectedIds);
+  let changed = false;
+  const next = rfNodes.map((n) => {
+    const isSelected = selected.has(n.id);
+    if (!!n.selected === isSelected) return n;
+    changed = true;
+    return { ...n, selected: isSelected };
+  });
+  return changed ? next : rfNodes;
 };
 
 export const CanvasBoard = ({
@@ -251,222 +114,250 @@ export const CanvasBoard = ({
   connections,
   tool,
   selectedIds,
-  pan,
-  zoom,
-  handleCanvasMouseDown,
-  handleMouseMove,
-  handleMouseUp,
-  handleNodeMouseDown,
-  tempConnectionStart,
-  dragStart,
+  onSelectedIdsChange,
+  onPersistNodes,
+  onDraggingChange,
+  onConnect,
+  onPaneAddNode,
   cursors,
   currentUserId,
-  selectionBox,
+  roomId,
   editingLabelId = null,
   onInlineLabelChange,
   onInlineLabelEnd,
   onInlineLabelSubmit,
+  fitRequestId = 0,
 }: CanvasBoardProps) => {
-  const tempSource = tempConnectionStart
-    ? nodes.find((n) => n.id === tempConnectionStart)
-    : null;
+  const { screenToFlowPosition } = useReactFlow();
+  const nodesRef = useRef(nodes);
+  const connectionsRef = useRef(connections);
+  const draggingRef = useRef(false);
+  const signatureRef = useRef(diagramSignature(nodes, connections));
+  const selectingFromPropsRef = useRef(false);
+
+  nodesRef.current = nodes;
+  connectionsRef.current = connections;
+
+  const [rfNodes, setRfNodes] = useState<DiagramFlowNode[]>(() =>
+    toFlowNodes(nodes, connections, selectedIds),
+  );
+  const [rfEdges, setRfEdges] = useState(() => toFlowEdges(connections, selectedIds));
+
+  // Domínio → RF quando o diagrama muda (load remoto, create, layout, props)
+  useEffect(() => {
+    if (draggingRef.current) return;
+    const nextSig = diagramSignature(nodes, connections);
+    if (nextSig === signatureRef.current) return;
+    signatureRef.current = nextSig;
+    setRfNodes(toFlowNodes(nodes, connections, selectedIds));
+    setRfEdges(toFlowEdges(connections, selectedIds));
+  }, [nodes, connections, selectedIds]);
+
+  // Seleção externa (Enter cria atributo, delete, etc.)
+  useEffect(() => {
+    if (draggingRef.current) return;
+    selectingFromPropsRef.current = true;
+    setRfNodes((prev) => applySelection(prev, selectedIds));
+    setRfEdges(toFlowEdges(connectionsRef.current, selectedIds));
+    queueMicrotask(() => {
+      selectingFromPropsRef.current = false;
+    });
+  }, [selectedIds]);
+
+  const contextValue = useMemo(
+    () => ({
+      editingLabelId,
+      onInlineLabelChange: onInlineLabelChange ?? (() => undefined),
+      onInlineLabelEnd: onInlineLabelEnd ?? (() => undefined),
+      onInlineLabelSubmit: onInlineLabelSubmit ?? (() => undefined),
+      connectable: tool === 'connection',
+    }),
+    [
+      editingLabelId,
+      onInlineLabelChange,
+      onInlineLabelEnd,
+      onInlineLabelSubmit,
+      tool,
+    ],
+  );
+
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<DiagramFlowNode>[]) => {
+      // `dimensions` causa loop com StoreUpdater; select vem de onSelectionChange/props
+      const filtered = changes.filter(
+        (c) => c.type !== 'dimensions' && c.type !== 'select',
+      );
+      if (filtered.length === 0) return;
+
+      let dragStarted = false;
+      let dragEnded = false;
+
+      for (const change of filtered) {
+        if (change.type !== 'position') continue;
+        if (change.dragging === true) dragStarted = true;
+        if (change.dragging === false) dragEnded = true;
+      }
+
+      if (dragStarted && !draggingRef.current) {
+        draggingRef.current = true;
+        onDraggingChange?.(true);
+      }
+
+      setRfNodes((current) => {
+        const next = applyNodeChanges(filtered, current);
+
+        if (dragEnded) {
+          // parentId do RF já moveu os atributos; só converte absoluto → domínio
+          const merged = fromFlowNodes(next, nodesRef.current);
+          nodesRef.current = merged;
+          signatureRef.current = diagramSignature(merged, connectionsRef.current);
+          queueMicrotask(() => {
+            onPersistNodes(merged);
+            draggingRef.current = false;
+            onDraggingChange?.(false);
+          });
+        }
+
+        return next;
+      });
+    },
+    [onDraggingChange, onPersistNodes],
+  );
+
+  const handleSelectionChange = useCallback(
+    ({ nodes: selNodes, edges: selEdges }: OnSelectionChangeParams) => {
+      if (tool === 'connection') return;
+      if (draggingRef.current) return;
+      if (selectingFromPropsRef.current) return;
+
+      const nodeIds = pruneChildSelection(
+        selNodes.map((n) => n.id),
+        rfNodes,
+      );
+      const ids = [...nodeIds, ...selEdges.map((e) => e.id)];
+      onSelectedIdsChange(ids);
+    },
+    [onSelectedIdsChange, tool, rfNodes],
+  );
+
+  const handlePaneClick = useCallback(
+    (e: ReactMouseEvent) => {
+      if (editingLabelId && onInlineLabelEnd) {
+        onInlineLabelEnd(editingLabelId);
+      }
+
+      if (tool === 'entity' || tool === 'relationship' || tool === 'table') {
+        const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        onPaneAddNode(pos);
+      }
+    },
+    [editingLabelId, onInlineLabelEnd, tool, screenToFlowPosition, onPaneAddNode],
+  );
+
+  const handleEdgeClick = useCallback(
+    (_e: ReactMouseEvent, edge: Edge) => {
+      if (tool === 'connection') return;
+      onSelectedIdsChange([edge.id]);
+    },
+    [onSelectedIdsChange, tool],
+  );
+
+  const isDuplicate = useCallback((source: string, target: string) => {
+    return connectionsRef.current.some(
+      (c) =>
+        (c.source === source && c.target === target) ||
+        (c.source === target && c.target === source),
+    );
+  }, []);
+
+  const handleConnect = useCallback(
+    (connection: RfConnection) => {
+      if (!connection.source || !connection.target) return;
+      if (connection.source === connection.target) return;
+      if (isDuplicate(connection.source, connection.target)) return;
+      onConnect(connection.source, connection.target);
+    },
+    [isDuplicate, onConnect],
+  );
+
+  const isValidConnection = useCallback(
+    (connection: RfConnection | Edge) => {
+      const source = connection.source;
+      const target = connection.target;
+      if (!source || !target || source === target) return false;
+      return !isDuplicate(source, target);
+    },
+    [isDuplicate],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      updateRemoteCursor(roomId, currentUserId ?? '', pos.x, pos.y);
+    },
+    [screenToFlowPosition, roomId, currentUserId],
+  );
+
+  const isPlacementTool =
+    tool === 'entity' || tool === 'relationship' || tool === 'table';
+  const isConnectionTool = tool === 'connection';
 
   return (
-    <div
-      className="flex-1 bg-slate-50 relative cursor-default overflow-hidden h-full w-full"
-      onMouseDown={handleCanvasMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onContextMenu={(e) => e.preventDefault()}
-      style={{ cursor: tool === 'select' ? 'grab' : 'crosshair' }}
-      id="diagram-canvas"
-    >
+    <DiagramFlowProvider value={contextValue}>
       <div
-        id="grid-bg"
-        className="absolute inset-0 pointer-events-none opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)',
-          backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
-          backgroundPosition: `${pan.x}px ${pan.y}px`,
-        }}
-      />
-
-      <svg className="w-full h-full pointer-events-none">
-        <defs>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-          {connections.map((conn) => {
-            const s = nodes.find((n) => n.id === conn.source);
-            const t = nodes.find((n) => n.id === conn.target);
-            if (!s || !t) return null;
-            const isSelected = selectedIds.includes(conn.id);
-            return (
-              <g key={conn.id} className="pointer-events-auto cursor-pointer group">
-                <line
-                  x1={s.x}
-                  y1={s.y}
-                  x2={t.x}
-                  y2={t.y}
-                  stroke={isSelected ? '#6366f1' : '#cbd5e1'}
-                  strokeWidth="2"
-                  className="transition-colors"
-                />
-                <line
-                  x1={s.x}
-                  y1={s.y}
-                  x2={t.x}
-                  y2={t.y}
-                  stroke="transparent"
-                  strokeWidth="15"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleNodeMouseDown(e, conn.id, true);
-                  }}
-                />
-                {(conn.cardinalitySource || conn.cardinalityTarget) && (
-                  <>
-                    <text
-                      x={s.x + (t.x - s.x) * 0.25}
-                      y={s.y + (t.y - s.y) * 0.25}
-                      className="text-[10px] fill-slate-500 font-bold"
-                      textAnchor="middle"
-                      dy="-5"
-                      stroke="white"
-                      strokeWidth="3"
-                      paintOrder="stroke"
-                    >
-                      {conn.cardinalitySource}
-                    </text>
-                    <text
-                      x={s.x + (t.x - s.x) * 0.25}
-                      y={s.y + (t.y - s.y) * 0.25}
-                      className="text-[10px] fill-slate-500 font-bold"
-                      textAnchor="middle"
-                      dy="-5"
-                    >
-                      {conn.cardinalitySource}
-                    </text>
-                    <text
-                      x={s.x + (t.x - s.x) * 0.75}
-                      y={s.y + (t.y - s.y) * 0.75}
-                      className="text-[10px] fill-slate-500 font-bold"
-                      textAnchor="middle"
-                      dy="-5"
-                      stroke="white"
-                      strokeWidth="3"
-                      paintOrder="stroke"
-                    >
-                      {conn.cardinalityTarget}
-                    </text>
-                    <text
-                      x={s.x + (t.x - s.x) * 0.75}
-                      y={s.y + (t.y - s.y) * 0.75}
-                      className="text-[10px] fill-slate-500 font-bold"
-                      textAnchor="middle"
-                      dy="-5"
-                    >
-                      {conn.cardinalityTarget}
-                    </text>
-                  </>
-                )}
-              </g>
-            );
-          })}
-
-          {tool === 'connection' && tempSource && (
-            <line
-              x1={tempSource.x}
-              y1={tempSource.y}
-              x2={dragStart.x}
-              y2={dragStart.y}
-              stroke="#cbd5e1"
-              strokeDasharray="5,5"
-              strokeWidth="2"
-            />
-          )}
-
-          {nodes.map((node) => {
-            const isEditing = editingLabelId === node.id;
-            let labelOnLeft = false;
-            if (node.type === NODE_TYPES.ATTRIBUTE) {
-              const owner = connections
-                .map((c) => {
-                  const other =
-                    c.source === node.id
-                      ? c.target
-                      : c.target === node.id
-                        ? c.source
-                        : null;
-                  return other ? nodes.find((n) => n.id === other) : undefined;
-                })
-                .find((n) => n && STRUCTURAL_TYPES.has(n.type));
-              if (owner) labelOnLeft = node.x < owner.x;
-            }
-            return (
-              <g
-                key={node.id}
-                onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
-                className={`pointer-events-auto ${isEditing ? 'cursor-text' : 'cursor-move'}`}
-              >
-                {renderNode(
-                  node,
-                  selectedIds.includes(node.id),
-                  isEditing && onInlineLabelChange && onInlineLabelEnd && onInlineLabelSubmit
-                    ? {
-                        isEditing: true,
-                        onChange: (label) => onInlineLabelChange(node.id, label),
-                        onEnd: () => onInlineLabelEnd(node.id),
-                        onSubmit: () => onInlineLabelSubmit(node.id),
-                      }
-                    : undefined,
-                  labelOnLeft,
-                )}
-              </g>
-            );
-          })}
-
-          {cursors.map(
-            (cursor) =>
-              cursor.userId !== currentUserId && (
-                <g key={cursor.userId} transform={`translate(${cursor.x}, ${cursor.y})`}>
-                  <MousePointer2 className="w-4 h-4" fill={cursor.color} color="white" />
-                  <text
-                    x="12"
-                    y="10"
-                    className="text-[10px] font-bold fill-white px-1"
-                    stroke={cursor.color}
-                    strokeWidth="2"
-                    paintOrder="stroke"
-                  >
-                    {cursor.userId.substring(0, 4)}
-                  </text>
-                </g>
-              ),
-          )}
-
-          {selectionBox && (
-            <rect
-              x={selectionBox.startX}
-              y={selectionBox.startY}
-              width={selectionBox.currentX - selectionBox.startX}
-              height={selectionBox.currentY - selectionBox.startY}
-              fill="rgba(99, 102, 241, 0.1)"
-              stroke="#6366f1"
-              strokeDasharray="4"
-              strokeWidth={1 / zoom}
-              className="pointer-events-none"
-            />
-          )}
-        </g>
-      </svg>
-    </div>
+        className="flex-1 relative h-full w-full"
+        id="diagram-canvas"
+        onPointerMove={handlePointerMove}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <ReactFlow
+          nodes={rfNodes}
+          edges={rfEdges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={handleNodesChange}
+          onSelectionChange={handleSelectionChange}
+          onPaneClick={handlePaneClick}
+          onEdgeClick={handleEdgeClick}
+          onConnect={handleConnect}
+          isValidConnection={isValidConnection}
+          connectionMode={ConnectionMode.Loose}
+          connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
+          nodesDraggable={tool === 'select'}
+          nodesConnectable={isConnectionTool}
+          elementsSelectable={tool === 'select'}
+          panOnDrag={tool === 'select' ? true : [1, 2]}
+          panOnScroll={false}
+          zoomOnScroll
+          zoomOnPinch
+          selectionKeyCode="Shift"
+          multiSelectionKeyCode="Shift"
+          minZoom={0.1}
+          maxZoom={3}
+          proOptions={{ hideAttribution: true }}
+          className={isPlacementTool || isConnectionTool ? 'cursor-crosshair' : ''}
+          defaultEdgeOptions={{ type: 'cardinality' }}
+          fitView={false}
+          deleteKeyCode={null}
+        >
+          <Background
+            id="grid"
+            variant={BackgroundVariant.Dots}
+            gap={20}
+            size={1}
+            color="#94a3b8"
+          />
+          <FitController fitRequestId={fitRequestId} />
+          {isConnectionTool ? (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+              <span className="bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow">
+                Arraste de um nó até outro para conectar
+              </span>
+            </div>
+          ) : null}
+        </ReactFlow>
+        <RemoteCursors cursors={cursors} currentUserId={currentUserId} />
+      </div>
+    </DiagramFlowProvider>
   );
 };

@@ -1,4 +1,3 @@
-import { isRealtimeCollabEnabled } from './config/firebase';
 import { useAuth } from './hooks/useAuth';
 import { setRoomInUrl } from './lib/utils';
 import { LoginScreen } from './components/auth/LoginScreen';
@@ -37,7 +36,6 @@ export default function App() {
         onLoginGoogle={() => void loginGoogle()}
         onLoginGuest={() => void loginGuest()}
         loading={authLoading}
-        collabEnabled={isRealtimeCollabEnabled}
       />
     );
   }

@@ -22,7 +22,9 @@ const toAppUser = (user: {
 });
 
 export const useAuth = () => {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const [user, setUser] = useState<AppUser | null>(
+    isFirebaseConfigured ? null : { ...LOCAL_USER },
+  );
   const [authLoading, setAuthLoading] = useState(isFirebaseConfigured);
   const [roomId, setRoomId] = useState<string | null>(null);
 

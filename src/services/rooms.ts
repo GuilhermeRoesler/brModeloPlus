@@ -16,6 +16,7 @@ import {
   loadLocalRoom,
   saveLocalRoom,
 } from '../lib/localStorage';
+import { normalizeRoomData } from '../lib/roomNormalize';
 import { getRandomColor } from '../lib/utils';
 import type { Connection, DiagramNode, Mode, RemoteCursor, RoomData } from '../types';
 
@@ -30,8 +31,9 @@ export const subscribeToRoom = (
   handlers: RoomSyncHandlers,
 ): Unsubscribe | undefined => {
   if (!isRealtimeCollabEnabled || !db) {
-    const data = loadLocalRoom(roomId) ?? createEmptyRoom();
-    if (!loadLocalRoom(roomId)) {
+    const raw = loadLocalRoom(roomId) ?? createEmptyRoom();
+    const data = normalizeRoomData(raw);
+    if (!loadLocalRoom(roomId) || raw.coordSpace !== 'topLeft') {
       saveLocalRoom(roomId, data);
     }
     handlers.onRoomData(data);
@@ -43,11 +45,20 @@ export const subscribeToRoom = (
     if (snap.exists()) {
       if (handlers.shouldIgnoreRemote?.()) return;
       const data = snap.data();
-      handlers.onRoomData({
+      const normalized = normalizeRoomData({
         nodes: (data.nodes as DiagramNode[]) || [],
         connections: (data.connections as Connection[]) || [],
         mode: (data.mode as Mode) || createEmptyRoom().mode,
+        coordSpace: data.coordSpace as RoomData['coordSpace'],
       });
+      handlers.onRoomData(normalized);
+      // Persiste migração center→topLeft uma vez
+      if (data.coordSpace !== 'topLeft') {
+        void updateDoc(docRef, {
+          ...normalized,
+          lastUpdated: serverTimestamp(),
+        });
+      }
     } else {
       void setDoc(docRef, {
         ...createEmptyRoom(),
@@ -78,14 +89,19 @@ export const saveRoom = async (
   roomId: string,
   data: RoomData,
 ) => {
+  const payload: RoomData = {
+    ...data,
+    coordSpace: 'topLeft',
+  };
+
   if (!isRealtimeCollabEnabled || !db) {
-    saveLocalRoom(roomId, data);
+    saveLocalRoom(roomId, payload);
     return;
   }
 
   const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
   await updateDoc(docRef, {
-    ...data,
+    ...payload,
     lastUpdated: serverTimestamp(),
   });
 };

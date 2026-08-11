@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ReactFlowProvider, useReactFlow, useStore } from '@xyflow/react';
 import { ZoomIn, ZoomOut } from 'lucide-react';
-import { HEADER_HEIGHT } from '../../config/constants';
-import { saveRoom, subscribeToRoom, updateRemoteCursor } from '../../services/rooms';
+import { saveRoom, subscribeToRoom } from '../../services/rooms';
 import { autoLayout } from '../../lib/autoLayout';
-import { computeFitView } from '../../lib/viewport';
+import { attributeOffsetX, getNodeCenter, topLeftFromCenter } from '../../lib/nodeGeometry';
+import { findAttributeOwnerId as resolveAttributeOwner } from '../../lib/reactFlowAdapter';
 import { generateId } from '../../lib/utils';
 import {
   MODES,
@@ -12,9 +13,7 @@ import {
   type Connection,
   type DiagramNode,
   type Mode,
-  type Point,
   type RemoteCursor,
-  type SelectionBox,
   type Tool,
 } from '../../types';
 import { CanvasBoard } from './CanvasBoard';
@@ -29,29 +28,58 @@ type EditorScreenProps = {
   onBack: () => void;
 };
 
-export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
+const ZoomControls = () => {
+  const { zoomIn, zoomOut, setViewport, getViewport } = useReactFlow();
+  const zoom = useStore((s) => s.transform[2]);
+
+  return (
+    <div className="absolute bottom-6 left-6 flex gap-2 z-10">
+      <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-1 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => void zoomOut({ duration: 150 })}
+          className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+        >
+          <ZoomOut size={18} />
+        </button>
+        <span className="text-xs font-bold w-12 text-center text-slate-600 tabular-nums">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={() => void zoomIn({ duration: 150 })}
+          className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+        >
+          <ZoomIn size={18} />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          const vp = getViewport();
+          void setViewport({ ...vp, x: 0, y: 0, zoom: 1 }, { duration: 150 });
+        }}
+        className="bg-white rounded-xl shadow-lg border border-slate-100 p-2 hover:bg-slate-50 text-slate-600 transition-colors text-xs font-medium"
+      >
+        Resetar
+      </button>
+    </div>
+  );
+};
+
+const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
   const [mode, setMode] = useState<Mode>(MODES.CONCEPTUAL);
   const [nodes, setNodes] = useState<DiagramNode[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tool, setTool] = useState<Tool>('select');
-  const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [showSql, setShowSql] = useState(false);
   const [cursors, setCursors] = useState<RemoteCursor[]>([]);
-  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [fitRequestId, setFitRequestId] = useState(0);
 
-  const tempConnectionStart = useRef<string | null>(null);
-  const isDraggingCanvas = useRef(false);
   const isDraggingNode = useRef(false);
-  const isSelecting = useRef(false);
-  const didCanvasPan = useRef(false);
-  const selectionBoxStart = useRef<Point | null>(null);
-  const dragStart = useRef<Point>({ x: 0, y: 0 });
-  const canvasDragStart = useRef<Point>({ x: 0, y: 0 });
-  const initialNodePositions = useRef<Record<string, Point>>({});
   const nodesRef = useRef(nodes);
   const connectionsRef = useRef(connections);
   const modeRef = useRef(mode);
@@ -90,16 +118,6 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     return () => unsub?.();
   }, [roomId]);
 
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) return;
-      const delta = -e.deltaY * 0.001;
-      setZoom((z) => Math.min(3, Math.max(0.1, z + delta)));
-    };
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, []);
-
   const persist = async (
     newNodes?: DiagramNode[],
     newConns?: Connection[],
@@ -109,26 +127,13 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
       nodes: newNodes ?? nodesRef.current,
       connections: newConns ?? connectionsRef.current,
       mode: newMode ?? modeRef.current,
+      coordSpace: 'topLeft',
     });
   };
 
-  const fitNodesInView = (laidOut: DiagramNode[]) => {
-    if (laidOut.length === 0) return;
-    const canvas = document.getElementById('diagram-canvas');
-    if (!canvas) return;
-    // clientWidth/Height ignoram barras de rolagem e são mais estáveis que getBoundingClientRect
-    const width = canvas.clientWidth || canvas.getBoundingClientRect().width;
-    const height = canvas.clientHeight || canvas.getBoundingClientRect().height;
-    if (width <= 0 || height <= 0) return;
-    const fitted = computeFitView(laidOut, { width, height });
-    if (fitted) {
-      setPan(fitted.pan);
-      setZoom(fitted.zoom);
-    }
-  };
+  const requestFit = () => setFitRequestId((n) => n + 1);
 
-  /** Aplica auto layout (opcional), atualiza estado e persiste. */
-  const commitDiagram = (
+  const commitDiagram = async (
     nextNodes: DiagramNode[],
     nextConns: Connection[] = connectionsRef.current,
     options: { fit?: boolean; layout?: boolean } = {},
@@ -136,78 +141,53 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     const { fit = true, layout = true } = options;
     const next =
       layout && nextNodes.length > 0
-        ? autoLayout(nextNodes, nextConns)
+        ? await autoLayout(nextNodes, nextConns)
         : nextNodes;
     setNodes(next);
     setConnections(nextConns);
     nodesRef.current = next;
     connectionsRef.current = nextConns;
-    if (fit) fitNodesInView(next);
+    if (fit) requestFit();
     void persist(next, nextConns);
     return next;
   };
 
-  const getMousePos = (e: MouseEvent) => {
-    const x = (e.clientX - pan.x) / zoom;
-    const y = (e.clientY - HEADER_HEIGHT - pan.y) / zoom;
-    return { x, y, rawX: e.clientX, rawY: e.clientY - HEADER_HEIGHT };
-  };
+  const addNodeAt = (flowPos: { x: number; y: number }) => {
+    let draft: Omit<DiagramNode, 'x' | 'y'> | null = null;
 
-  const addNode = (pos: Point) => {
-    let newNode: DiagramNode | null = null;
     if (tool === 'entity') {
-      newNode = {
+      draft = {
         id: generateId(),
-        x: pos.x,
-        y: pos.y,
         type: NODE_TYPES.ENTITY,
         label: 'Entidade',
         isWeak: false,
       };
     } else if (tool === 'relationship') {
-      newNode = {
+      draft = {
         id: generateId(),
-        x: pos.x,
-        y: pos.y,
         type: NODE_TYPES.RELATIONSHIP,
         label: 'Rel',
-        width: 80,
-        height: 80,
       };
     } else if (tool === 'table') {
-      newNode = {
+      draft = {
         id: generateId(),
-        x: pos.x,
-        y: pos.y,
         type: NODE_TYPES.TABLE,
         label: 'Tabela',
         columns: [{ id: generateId(), name: 'id', type: 'INT', isPk: true }],
       };
     }
-    if (!newNode) return;
+    if (!draft) return;
 
-    commitDiagram([...nodes, newNode]);
+    const topLeft = topLeftFromCenter(flowPos, draft);
+    const newNode: DiagramNode = { ...draft, x: topLeft.x, y: topLeft.y };
+
+    void commitDiagram([...nodesRef.current, newNode]);
     setTool('select');
     setSelectedIds([newNode.id]);
   };
 
-  const findAttributeOwnerId = (attrId: string) => {
-    const nodesList = nodesRef.current;
-    const conns = connectionsRef.current;
-    for (const c of conns) {
-      const other =
-        c.source === attrId ? c.target : c.target === attrId ? c.source : null;
-      if (!other) continue;
-      const n = nodesList.find((x) => x.id === other);
-      if (
-        n &&
-        (n.type === NODE_TYPES.ENTITY || n.type === NODE_TYPES.RELATIONSHIP)
-      ) {
-        return other;
-      }
-    }
-    return null;
-  };
+  const findAttributeOwnerId = (attrId: string) =>
+    resolveAttributeOwner(attrId, nodesRef.current, connectionsRef.current);
 
   const linkedAttributesOf = (ownerId: string) => {
     const nodesList = nodesRef.current;
@@ -223,7 +203,6 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     return attrs;
   };
 
-  /** Cria atributo ligado a entidade/relacionamento e entra em edição de nome. */
   const createLinkedAttribute = (ownerId: string) => {
     const owner = nodesRef.current.find((n) => n.id === ownerId);
     if (!owner) return;
@@ -234,21 +213,34 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
       return;
     }
 
+    const ownerCenter = getNodeCenter(owner);
     const siblings = linkedAttributesOf(ownerId);
     const side: 1 | -1 =
-      siblings.length > 0 ? (siblings[0].x >= owner.x ? 1 : -1) : 1;
-    const y =
+      siblings.length > 0
+        ? getNodeCenter(siblings[0]).x >= ownerCenter.x
+          ? 1
+          : -1
+        : 1;
+    const centerY =
       siblings.length === 0
-        ? owner.y
-        : Math.max(...siblings.map((s) => s.y)) + 32;
+        ? ownerCenter.y
+        : Math.max(...siblings.map((s) => getNodeCenter(s).y)) + 32;
 
-    const newAttr: DiagramNode = {
+    const draft: Pick<DiagramNode, 'id' | 'type' | 'label' | 'attrType'> = {
       id: generateId(),
-      x: owner.x + side * 110,
-      y,
       type: NODE_TYPES.ATTRIBUTE,
       label: '',
       attrType: 'normal',
+    };
+    const topLeft = topLeftFromCenter(
+      { x: ownerCenter.x + side * attributeOffsetX(owner), y: centerY },
+      draft,
+    );
+
+    const newAttr: DiagramNode = {
+      ...draft,
+      x: topLeft.x,
+      y: topLeft.y,
     };
     const newConn: Connection = {
       id: generateId(),
@@ -258,9 +250,11 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
       cardinalityTarget: '',
     };
 
-    const nextNodes = [...nodesRef.current, newAttr];
-    const nextConns = [...connectionsRef.current, newConn];
-    commitDiagram(nextNodes, nextConns, { fit: false, layout: false });
+    void commitDiagram(
+      [...nodesRef.current, newAttr],
+      [...connectionsRef.current, newConn],
+      { fit: false, layout: false },
+    );
     setTool('select');
     setSelectedIds([newAttr.id]);
     editingLabelIdRef.current = newAttr.id;
@@ -348,181 +342,67 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-    // Handlers usam refs; listener estável no mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCanvasMouseDown = (e: MouseEvent) => {
-    if (e.button !== 0) return;
+  const handlePersistNodes = useCallback(
+    (next: DiagramNode[]) => {
+      isDraggingNode.current = false;
+      nodesRef.current = next;
+      setNodes(next);
+      void persist(next);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [roomId],
+  );
 
-    const pos = getMousePos(e);
-    const target = e.target as HTMLElement;
-    const isEmptyCanvas =
-      target.id === 'grid-bg' || target.tagName === 'svg' || target.tagName === 'DIV';
+  const handleDraggingChange = useCallback((dragging: boolean) => {
+    isDraggingNode.current = dragging;
+  }, []);
 
-    if (!isEmptyCanvas) return;
+  const handleConnect = useCallback((source: string, target: string) => {
+    const exists = connectionsRef.current.some(
+      (c) =>
+        (c.source === source && c.target === target) ||
+        (c.source === target && c.target === source),
+    );
+    if (exists) return;
 
-    if (editingLabelIdRef.current) {
-      handleInlineLabelEnd(editingLabelIdRef.current);
-    }
-
-    if (tool === 'select') {
-      if (e.shiftKey) {
-        isSelecting.current = true;
-        selectionBoxStart.current = { x: pos.x, y: pos.y };
-        setSelectionBox({
-          startX: pos.x,
-          startY: pos.y,
-          currentX: pos.x,
-          currentY: pos.y,
-        });
-      } else {
-        isDraggingCanvas.current = true;
-        didCanvasPan.current = false;
-        canvasDragStart.current = { x: e.clientX, y: e.clientY };
-        dragStart.current = { ...pan };
-      }
-    } else {
-      addNode(pos);
-    }
-  };
-
-  const handleNodeMouseDown = (e: MouseEvent, id: string, isConnection = false) => {
-    e.stopPropagation();
-
-    if (editingLabelIdRef.current && editingLabelIdRef.current !== id) {
-      handleInlineLabelEnd(editingLabelIdRef.current);
-    }
-
-    if (tool === 'connection') {
-      if (!tempConnectionStart.current) {
-        tempConnectionStart.current = id;
-      } else {
-        if (tempConnectionStart.current !== id) {
-          const newConn: Connection = {
-            id: generateId(),
-            source: tempConnectionStart.current,
-            target: id,
-            cardinalitySource: '',
-            cardinalityTarget: '',
-          };
-          commitDiagram(nodes, [...connections, newConn]);
-        }
-        tempConnectionStart.current = null;
-        setTool('select');
-      }
-      return;
-    }
-
-    let newSelection = [...selectedIds];
-    if (e.shiftKey) {
-      if (newSelection.includes(id)) newSelection = newSelection.filter((item) => item !== id);
-      else newSelection.push(id);
-    } else if (!newSelection.includes(id)) {
-      newSelection = [id];
-    }
-    setSelectedIds(newSelection);
-
-    if (!isConnection) {
-      isDraggingNode.current = true;
-      const positions: Record<string, Point> = {};
-      nodes.forEach((n) => {
-        if (newSelection.includes(n.id)) positions[n.id] = { x: n.x, y: n.y };
-      });
-      initialNodePositions.current = positions;
-      dragStart.current = getMousePos(e);
-    }
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    const pos = getMousePos(e);
-    updateRemoteCursor(roomId, user.uid, pos.x, pos.y);
-
-    if (isDraggingCanvas.current) {
-      const dx = e.clientX - canvasDragStart.current.x;
-      const dy = e.clientY - canvasDragStart.current.y;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didCanvasPan.current = true;
-      setPan({ x: dragStart.current.x + dx, y: dragStart.current.y + dy });
-      return;
-    }
-
-    if (isSelecting.current && selectionBoxStart.current) {
-      setSelectionBox({
-        startX: Math.min(selectionBoxStart.current.x, pos.x),
-        startY: Math.min(selectionBoxStart.current.y, pos.y),
-        currentX: Math.max(selectionBoxStart.current.x, pos.x),
-        currentY: Math.max(selectionBoxStart.current.y, pos.y),
-      });
-      return;
-    }
-
-    if (isDraggingNode.current && selectedIds.length > 0) {
-      const dx = pos.x - dragStart.current.x;
-      const dy = pos.y - dragStart.current.y;
-      setNodes(
-        nodes.map((n) => {
-          if (selectedIds.includes(n.id) && initialNodePositions.current[n.id]) {
-            return {
-              ...n,
-              x: initialNodePositions.current[n.id].x + dx,
-              y: initialNodePositions.current[n.id].y + dy,
-            };
-          }
-          return n;
-        }),
-      );
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (isDraggingNode.current) {
-      void persist(nodes);
-    }
-
-    if (isDraggingCanvas.current && !didCanvasPan.current) {
-      setSelectedIds([]);
-    }
-
-    isDraggingCanvas.current = false;
-    isDraggingNode.current = false;
-    didCanvasPan.current = false;
-
-    if (isSelecting.current) {
-      isSelecting.current = false;
-      const box = selectionBox;
-      if (box) {
-        const inside = nodes
-          .filter(
-            (n) =>
-              n.x >= box.startX &&
-              n.x <= box.currentX &&
-              n.y >= box.startY &&
-              n.y <= box.currentY,
-          )
-          .map((n) => n.id);
-
-        setSelectedIds((prev) => [...new Set([...prev, ...inside])]);
-      }
-      setSelectionBox(null);
-    }
-  };
+    const newConn: Connection = {
+      id: generateId(),
+      source,
+      target,
+      cardinalitySource: '',
+      cardinalityTarget: '',
+    };
+    void commitDiagram(nodesRef.current, [...connectionsRef.current, newConn], {
+      fit: false,
+      layout: false,
+    });
+    setTool('select');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateNode = (id: string, changes: Partial<DiagramNode>) => {
-    const updated = nodes.map((n) => (n.id === id ? { ...n, ...changes } : n));
-    commitDiagram(updated, connections, { fit: false });
+    const updated = nodesRef.current.map((n) =>
+      n.id === id ? { ...n, ...changes } : n,
+    );
+    void commitDiagram(updated, connectionsRef.current, { fit: false });
   };
 
   const updateConnection = (id: string, changes: Partial<Connection>) => {
-    const updated = connections.map((c) => (c.id === id ? { ...c, ...changes } : c));
-    commitDiagram(nodes, updated, { fit: false });
+    const updated = connectionsRef.current.map((c) =>
+      c.id === id ? { ...c, ...changes } : c,
+    );
+    void commitDiagram(nodesRef.current, updated, { fit: false });
   };
 
   const deleteSelected = (idOverride?: string | null) => {
-    const idsToDelete = idOverride ? [idOverride] : selectedIds;
+    const idsToDelete = idOverride ? [idOverride] : selectedIdsRef.current;
     if (idsToDelete.length === 0) return;
 
-    const newNodes = nodes.filter((n) => !idsToDelete.includes(n.id));
-    const newConns = connections.filter(
+    const newNodes = nodesRef.current.filter((n) => !idsToDelete.includes(n.id));
+    const newConns = connectionsRef.current.filter(
       (c) =>
         !idsToDelete.includes(c.id) &&
         !idsToDelete.includes(c.source) &&
@@ -530,7 +410,7 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     );
 
     setSelectedIds([]);
-    commitDiagram(newNodes, newConns);
+    void commitDiagram(newNodes, newConns);
   };
 
   const handleChangeMode = (m: Mode) => {
@@ -539,7 +419,7 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
   };
 
   const handleAutoLayout = () => {
-    commitDiagram(nodes, connections);
+    void commitDiagram(nodesRef.current, connectionsRef.current);
   };
 
   return (
@@ -566,55 +446,36 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
           connections={connections}
           tool={tool}
           selectedIds={selectedIds}
-          pan={pan}
-          zoom={zoom}
-          handleCanvasMouseDown={handleCanvasMouseDown}
-          handleMouseMove={handleMouseMove}
-          handleMouseUp={handleMouseUp}
-          handleNodeMouseDown={handleNodeMouseDown}
-          tempConnectionStart={tempConnectionStart.current}
-          dragStart={dragStart.current}
+          onSelectedIdsChange={(ids) => {
+            setSelectedIds((prev) => {
+              if (
+                prev.length === ids.length &&
+                prev.every((id, i) => id === ids[i])
+              ) {
+                return prev;
+              }
+              return ids;
+            });
+          }}
+          onPersistNodes={handlePersistNodes}
+          onDraggingChange={handleDraggingChange}
+          onConnect={handleConnect}
+          onPaneAddNode={addNodeAt}
           cursors={cursors}
           currentUserId={user.uid}
-          selectionBox={selectionBox}
+          roomId={roomId}
           editingLabelId={editingLabelId}
           onInlineLabelChange={handleInlineLabelChange}
           onInlineLabelEnd={handleInlineLabelEnd}
           onInlineLabelSubmit={handleInlineLabelSubmit}
+          fitRequestId={fitRequestId}
         />
 
         {showSql && mode === MODES.PHYSICAL && (
           <SQLPanel nodes={nodes} onClose={() => setShowSql(false)} />
         )}
 
-        <div className="absolute bottom-6 left-6 flex gap-2 z-10">
-          <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-1 flex items-center gap-1">
-            <button
-              onClick={() => setZoom((z) => Math.max(0.1, z - 0.1))}
-              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
-            >
-              <ZoomOut size={18} />
-            </button>
-            <span className="text-xs font-bold w-12 text-center text-slate-600 tabular-nums">
-              {Math.round(zoom * 100)}%
-            </span>
-            <button
-              onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
-              className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
-            >
-              <ZoomIn size={18} />
-            </button>
-          </div>
-          <button
-            onClick={() => {
-              setPan({ x: 0, y: 0 });
-              setZoom(1);
-            }}
-            className="bg-white rounded-xl shadow-lg border border-slate-100 p-2 hover:bg-slate-50 text-slate-600 transition-colors text-xs font-medium"
-          >
-            Resetar
-          </button>
-        </div>
+        <ZoomControls />
 
         <PropertiesPanel
           selectedIds={selectedIds}
@@ -628,3 +489,9 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     </div>
   );
 };
+
+export const EditorScreen = (props: EditorScreenProps) => (
+  <ReactFlowProvider>
+    <EditorWorkspace {...props} />
+  </ReactFlowProvider>
+);

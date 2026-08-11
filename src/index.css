@@ -1,1 +1,27 @@
 @import "tailwindcss";
+
+/* React Flow: canvas ocupa o container do editor */
+.react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.react-flow__node {
+  cursor: grab;
+}
+
+/* Pais (entidade/rel) e atributos: filhos podem ficar fora do bbox */
+.react-flow__node-entity,
+.react-flow__node-relationship,
+.react-flow__node-attribute,
+.react-flow__node-parent {
+  overflow: visible !important;
+}
+
+.react-flow__node.dragging {
+  cursor: grabbing;
+}
+
+.react-flow__attribution {
+  display: none;
+}

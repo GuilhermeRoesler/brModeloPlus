@@ -62,12 +62,14 @@ export const DashboardScreen = ({ user, onOpenProject, onLogout }: DashboardScre
           ) : (
             <span className="text-xs font-medium text-slate-500">{user.email}</span>
           )}
-          <button
-            onClick={onLogout}
-            className="text-slate-500 hover:text-red-600 flex items-center gap-2 text-sm font-medium"
-          >
-            <LogOut size={16} /> Sair
-          </button>
+          {!user.isLocal && (
+            <button
+              onClick={onLogout}
+              className="text-slate-500 hover:text-red-600 flex items-center gap-2 text-sm font-medium"
+            >
+              <LogOut size={16} /> Sair
+            </button>
+          )}
         </div>
       </header>
 

@@ -36,4 +36,5 @@ export const createEmptyRoom = (): RoomData => ({
   nodes: [],
   connections: [],
   mode: MODES.CONCEPTUAL,
+  coordSpace: 'topLeft',
 });

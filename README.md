@@ -13,9 +13,11 @@
   - **Lógico:** estruturas relacionais.
   - **Físico:** tabelas, colunas, tipos, PK/FK e geração de SQL DDL.
 - **Editor**
-  - Drag-and-drop, zoom, pan, seleção múltipla (Shift + arrastar).
+  - Drag-and-drop, zoom (scroll do mouse), pan (arrastar), seleção múltipla (Shift + arrastar) via **React Flow**.
+  - Atributos seguem o dono com **`parentId`** nativo do React Flow.
   - Painel de propriedades.
-  - **Auto layout** (force-directed + atributos em colunas ao lado do dono).
+  - **Auto layout** (**ELK.js stress** na estrutura entidade–relacionamento–entidade; atributos em órbita ao redor do dono).
+  - **Conectar:** arrastar do handle de um nó até outro (modo Conectar).
   - **Enter** (modo conceitual): cria atributo já ligado à entidade/relacionamento (ou irmão do atributo selecionado), com edição inline do nome; Enter de novo cria o próximo.
   - Rótulo do atributo à esquerda ou à direita do círculo conforme o lado do dono.
 - **Colaboração em tempo real** (com Firebase): cursores remotos e sync do diagrama.
@@ -28,8 +30,8 @@
 - **Frontend:** [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/)
 - **Build:** [Vite](https://vitejs.dev/)
 - **UI:** [Tailwind CSS v4](https://tailwindcss.com/), [Lucide](https://lucide.dev/)
+- **Canvas / layout:** [React Flow](https://reactflow.dev/) (`@xyflow/react`), [ELK.js](https://www.eclipse.org/elk/)
 - **BaaS (opcional):** [Firebase](https://firebase.google.com/) Auth + Firestore
-
 ## Como executar
 
 ### Pré-requisitos
@@ -58,7 +60,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id
 VITE_FIREBASE_APP_ID=seu_app_id
 ```
 
-> Sem `VITE_FIREBASE_API_KEY`, o app sobe em **modo local**: projetos e salas no `localStorage`; colaboração desabilitada. As demais variáveis só são necessárias com a API key.
+> Sem `VITE_FIREBASE_API_KEY`, o app sobe em **modo local** e abre direto no dashboard: projetos e salas no `localStorage`; colaboração desabilitada. As demais variáveis só são necessárias com a API key.
 
 > No console Firebase (modo nuvem): habilite Authentication (Google + Anônimo) e Firestore com regras adequadas ao ambiente.
 
@@ -77,16 +79,16 @@ src/
   App.tsx                 # Roteador (login → dashboard → editor)
   config/                 # Firebase, flags e constantes de UI
   types/                  # Tipos do domínio (nós, conexões, projetos)
-  lib/                    # Utils puros (SQL, localStorage, autoLayout, viewport)
+  lib/                    # Utils puros (SQL, localStorage, autoLayout/ELK, nodeGeometry, reactFlowAdapter, roomNormalize)
   services/               # Persistência (projetos e salas: local ou Firestore)
   hooks/                  # useAuth, useProjects
   components/
     auth/                 # LoginScreen
     dashboard/            # DashboardScreen
-    editor/               # Editor, canvas, toolbar, painéis
+    editor/               # Editor, React Flow canvas, toolbar, painéis
+      flow/               # Nós/edges HTML + cursors remotos
     ui/                   # Componentes reutilizáveis
 ```
-
 Spec detalhada para agentes e contribuidores: [`.cursor/skills/brmodelo-plus/SKILL.md`](.cursor/skills/brmodelo-plus/SKILL.md).
 
 ## Scripts
