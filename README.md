@@ -72,7 +72,9 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id
 VITE_FIREBASE_APP_ID=seu_app_id
 ```
 
-> **Nota:** No console do Firebase, certifique-se de habilitar:
+> **Nota:** Sem `VITE_FIREBASE_API_KEY`, o app sobe em **modo local**: modelagem e projetos no `localStorage`, com colaboração em tempo real desabilitada. As demais variáveis Firebase só são necessárias com a API key configurada.
+
+> No console do Firebase, certifique-se de habilitar:
 >
 > 1. **Authentication:** Provedores "Google" e "Anônimo".
 > 2. **Firestore Database:** Crie o banco e ajuste as regras de segurança para permitir leitura/escrita (para desenvolvimento).

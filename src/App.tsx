@@ -46,12 +46,44 @@ const firebaseConfig = {
 };
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
 
+/** Sem API key, o Firebase não sobe — colaboração em tempo real fica desabilitada. */
+const isFirebaseConfigured = Boolean(import.meta.env.VITE_FIREBASE_API_KEY);
+const isRealtimeCollabEnabled = isFirebaseConfigured;
+
 let auth, db;
-if (firebaseConfig) {
+if (isFirebaseConfigured) {
   const app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
 }
+
+const LOCAL_USER = { uid: 'local-user', email: null, isAnonymous: true, isLocal: true };
+const LOCAL_PROJECTS_KEY = 'brmodelo-local-projects';
+const localRoomKey = (roomId) => `brmodelo-local-room-${roomId}`;
+
+const loadLocalProjects = () => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_PROJECTS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalProjects = (projects) => {
+  localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(projects));
+};
+
+const loadLocalRoom = (roomId) => {
+  try {
+    return JSON.parse(localStorage.getItem(localRoomKey(roomId)) || 'null');
+  } catch {
+    return null;
+  }
+};
+
+const saveLocalRoom = (roomId, data) => {
+  localStorage.setItem(localRoomKey(roomId), JSON.stringify(data));
+};
 
 // ==========================================
 // CONSTANTES E UTILITÁRIOS
@@ -462,38 +494,60 @@ const CanvasBoard = ({
 // TELA: LOGIN
 // ==========================================
 
-const LoginScreen = ({ onLoginGoogle, onLoginGuest, loading }) => (
+const LoginScreen = ({ onLoginGoogle, onLoginGuest, loading, collabEnabled }) => (
   <div className="w-full h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-100 text-center">
       <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 mx-auto mb-6">
         <Grid className="text-white" size={32} />
       </div>
       <h1 className="text-2xl font-bold text-slate-800 mb-2">BrModelo<span className="text-indigo-600">Plus</span></h1>
-      <p className="text-slate-500 mb-8">Modelagem de dados moderna na nuvem.</p>
+      <p className="text-slate-500 mb-8">
+        {collabEnabled
+          ? 'Modelagem de dados moderna na nuvem.'
+          : 'Modelagem de dados moderna — modo local.'}
+      </p>
 
-      <button
-        onClick={onLoginGoogle}
-        disabled={loading}
-        className="w-full py-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-3"
-      >
-        {loading ? (
-          <span className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
-        ) : (
-          <>
-            <Globe size={18} className="text-indigo-600" /> Entrar com Google
-          </>
-        )}
-      </button>
+      {!collabEnabled && (
+        <div className="mb-6 p-3 bg-amber-50 border border-amber-100 rounded-xl text-left">
+          <p className="text-xs text-amber-700 font-medium">
+            Firebase não configurado. Colaboração em tempo real desabilitada; projetos ficam só neste navegador.
+          </p>
+        </div>
+      )}
+
+      {collabEnabled && (
+        <button
+          onClick={onLoginGoogle}
+          disabled={loading}
+          className="w-full py-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-3"
+        >
+          {loading ? (
+            <span className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+          ) : (
+            <>
+              <Globe size={18} className="text-indigo-600" /> Entrar com Google
+            </>
+          )}
+        </button>
+      )}
 
       <button
         onClick={onLoginGuest}
         disabled={loading}
-        className="w-full py-3.5 text-slate-400 hover:text-indigo-600 rounded-xl font-medium text-sm transition-all hover:bg-indigo-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className={`w-full py-3.5 rounded-xl font-medium text-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+          collabEnabled
+            ? 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+            : 'bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200'
+        }`}
       >
-        Continuar como Convidado
+        {collabEnabled ? 'Continuar como Convidado' : 'Continuar no modo local'}
       </button>
 
-      <p className="text-xs text-slate-300 mt-6">Ao usar o modo convidado, os dados podem ser perdidos ao limpar o navegador.</p>
+      <p className="text-xs text-slate-300 mt-6">
+        {collabEnabled
+          ? 'Ao usar o modo convidado, os dados podem ser perdidos ao limpar o navegador.'
+          : 'Configure VITE_FIREBASE_API_KEY no .env para habilitar nuvem e colaboração.'}
+      </p>
     </div>
   </div>
 );
@@ -507,10 +561,19 @@ const DashboardScreen = ({ user, onOpenProject, onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const useLocalStorage = !isRealtimeCollabEnabled || user?.isLocal;
 
   // Fetch Projects
   useEffect(() => {
-    if (!user || !db) return;
+    if (!user) return;
+
+    if (useLocalStorage) {
+      setProjects(loadLocalProjects());
+      setLoading(false);
+      return;
+    }
+
+    if (!db) return;
     const fetchProjects = async () => {
       const q = collection(db, 'artifacts', appId, 'users', user.uid, 'projects');
       const snap = await getDocs(q);
@@ -521,7 +584,7 @@ const DashboardScreen = ({ user, onOpenProject, onLogout }) => {
       setLoading(false);
     };
     fetchProjects();
-  }, [user]);
+  }, [user, useLocalStorage]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -529,11 +592,21 @@ const DashboardScreen = ({ user, onOpenProject, onLogout }) => {
 
     const roomId = generateId();
     const projectData = {
+      id: roomId,
       name: newProjectName,
       roomId: roomId,
-      createdAt: serverTimestamp(),
+      createdAt: useLocalStorage ? { seconds: Math.floor(Date.now() / 1000) } : serverTimestamp(),
       ownerId: user.uid
     };
+
+    if (useLocalStorage) {
+      const next = [projectData, ...loadLocalProjects()];
+      saveLocalProjects(next);
+      saveLocalRoom(roomId, { nodes: [], connections: [], mode: MODES.CONCEPTUAL });
+      setProjects(next);
+      onOpenProject(roomId);
+      return;
+    }
 
     // Salva metadados do projeto na lista do usuário
     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'projects', roomId), projectData);
@@ -545,6 +618,13 @@ const DashboardScreen = ({ user, onOpenProject, onLogout }) => {
   const handleDelete = async (e, projectId) => {
     e.stopPropagation();
     if (confirm('Tem certeza que deseja excluir este projeto?')) {
+      if (useLocalStorage) {
+        const next = loadLocalProjects().filter(p => p.id !== projectId);
+        saveLocalProjects(next);
+        localStorage.removeItem(localRoomKey(projectId));
+        setProjects(next);
+        return;
+      }
       await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'projects', projectId));
       setProjects(projects.filter(p => p.id !== projectId));
     }
@@ -558,9 +638,14 @@ const DashboardScreen = ({ user, onOpenProject, onLogout }) => {
             <Grid className="text-white" size={18} />
           </div>
           <h1 className="font-bold text-slate-800">Meus Projetos</h1>
+          {!isRealtimeCollabEnabled && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded uppercase tracking-wide">Local</span>
+          )}
         </div>
         <div className="flex items-center gap-4">
-          {user.isAnonymous ? (
+          {user.isLocal ? (
+            <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">Modo local</span>
+          ) : user.isAnonymous ? (
             <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">Convidado</span>
           ) : (
             <span className="text-xs font-medium text-slate-500">{user.email}</span>
@@ -696,8 +781,10 @@ const EditorScreen = ({ user, roomId, onBack }) => {
               BrModelo<span className="text-indigo-600">Plus</span>
             </h1>
             <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Editor</span>
+              <span className={`w-2 h-2 rounded-full ${isRealtimeCollabEnabled ? 'bg-emerald-500' : 'bg-amber-400'}`}></span>
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+                {isRealtimeCollabEnabled ? 'Editor' : 'Editor local'}
+              </span>
             </div>
           </div>
         </div>
@@ -717,7 +804,7 @@ const EditorScreen = ({ user, roomId, onBack }) => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
         {mode === MODES.PHYSICAL && (
           <button
             onClick={() => setShowSql(!showSql)}
@@ -727,21 +814,42 @@ const EditorScreen = ({ user, roomId, onBack }) => {
           </button>
         )}
 
-        <div className="flex items-center gap-2 mr-4 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-100" title="Usuários nesta sala">
-          <Users size={14} />
-          <span>{onlineUsers}</span>
-        </div>
+        {isRealtimeCollabEnabled ? (
+          <>
+            <div className="flex items-center gap-2 mr-4 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-100" title="Usuários nesta sala">
+              <Users size={14} />
+              <span>{onlineUsers}</span>
+            </div>
 
-        <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Link copiado!'); }} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-slate-200">
-          <Share2 size={16} /> Compartilhar
-        </button>
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Link copiado!'); }} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-slate-200">
+              <Share2 size={16} /> Compartilhar
+            </button>
+          </>
+        ) : (
+          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1.5 rounded border border-amber-100 uppercase tracking-wide" title="Colaboração desabilitada — Firebase sem API key">
+            Sem colaboração
+          </span>
+        )}
       </div>
     </header>
   );
 
-  // 3. SINCRONIZAÇÃO
+  // 3. SINCRONIZAÇÃO (Firebase) ou carga local
   useEffect(() => {
-    if (!user || !db || !roomId) return;
+    if (!user || !roomId) return;
+
+    if (!isRealtimeCollabEnabled || !db) {
+      const data = loadLocalRoom(roomId);
+      if (data) {
+        setNodes(data.nodes || []);
+        setConnections(data.connections || []);
+        if (data.mode) setMode(data.mode);
+      } else {
+        saveLocalRoom(roomId, { nodes: [], connections: [], mode: MODES.CONCEPTUAL });
+      }
+      return;
+    }
+
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
     const unsubDoc = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
@@ -779,18 +887,28 @@ const EditorScreen = ({ user, roomId, onBack }) => {
   }, []);
 
   const saveToFirebase = async (newNodes, newConns, newMode) => {
-    if (!db || !roomId) return;
-    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-    await updateDoc(docRef, {
+    if (!roomId) return;
+
+    const payload = {
       nodes: newNodes !== undefined ? newNodes : nodes,
       connections: newConns !== undefined ? newConns : connections,
       mode: newMode !== undefined ? newMode : mode,
+    };
+
+    if (!isRealtimeCollabEnabled || !db) {
+      saveLocalRoom(roomId, payload);
+      return;
+    }
+
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    await updateDoc(docRef, {
+      ...payload,
       lastUpdated: serverTimestamp()
     });
   };
 
   const updateCursor = (x, y) => {
-    if (!user || !db || !roomId) return;
+    if (!isRealtimeCollabEnabled || !user || !db || !roomId) return;
     const now = Date.now();
     if (now - lastCursorUpdate.current > 100) {
       const cursorRef = doc(db, 'artifacts', appId, 'public', 'data', 'cursors', `${roomId}_${user.uid}`);
@@ -1037,11 +1155,18 @@ const EditorScreen = ({ user, roomId, onBack }) => {
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(isFirebaseConfigured);
   const [roomId, setRoomId] = useState(null);
 
   useEffect(() => {
-    if (!auth) return;
+    if (!isFirebaseConfigured || !auth) {
+      setAuthLoading(false);
+      const params = new URLSearchParams(window.location.search);
+      const rid = params.get('room');
+      if (rid) setRoomId(rid);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setAuthLoading(false);
@@ -1055,6 +1180,11 @@ export default function App() {
   }, []);
 
   const handleLoginGuest = async () => {
+    if (!isFirebaseConfigured) {
+      setUser(LOCAL_USER);
+      return;
+    }
+
     setAuthLoading(true);
     if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
       await signInWithCustomToken(auth, __initial_auth_token);
@@ -1064,6 +1194,7 @@ export default function App() {
   };
 
   const handleLoginGoogle = async () => {
+    if (!isFirebaseConfigured) return;
     setAuthLoading(true);
     const provider = new GoogleAuthProvider();
     try {
@@ -1088,12 +1219,22 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    if (isFirebaseConfigured && auth && !user?.isLocal) {
+      await signOut(auth);
+    }
+    setUser(null);
     setRoomId(null);
   };
 
   if (!user) {
-    return <LoginScreen onLoginGoogle={handleLoginGoogle} onLoginGuest={handleLoginGuest} loading={authLoading} />;
+    return (
+      <LoginScreen
+        onLoginGoogle={handleLoginGoogle}
+        onLoginGuest={handleLoginGuest}
+        loading={authLoading}
+        collabEnabled={isRealtimeCollabEnabled}
+      />
+    );
   }
 
   if (roomId) {
