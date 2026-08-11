@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Check, Code, Copy, X } from 'lucide-react';
 import { generateSQL } from '../../lib/sql';
-import type { DiagramNode } from '../../types';
+import type { ErNode } from '../../types';
 
 type SQLPanelProps = {
-  nodes: DiagramNode[];
+  nodes: ErNode[];
   onClose: () => void;
 };
 
@@ -25,7 +25,7 @@ export const SQLPanel = ({ nodes, onClose }: SQLPanelProps) => {
           <Code size={18} className="text-indigo-400" />
           <h2 className="text-sm font-bold text-white uppercase tracking-widest">SQL Gerado</h2>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-white">
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
           <X size={20} />
         </button>
       </div>
@@ -34,6 +34,7 @@ export const SQLPanel = ({ nodes, onClose }: SQLPanelProps) => {
       </div>
       <div className="p-4 border-t border-slate-700 bg-slate-950">
         <button
+          type="button"
           onClick={handleCopy}
           className={`w-full py-3 flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm ${
             copied ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'

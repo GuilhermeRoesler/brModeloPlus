@@ -11,14 +11,20 @@ import {
 } from 'lucide-react';
 import { PropertyInput } from '../ui/PropertyInput';
 import { generateId } from '../../lib/utils';
-import { NODE_TYPES, type Connection, type DiagramNode, type TableColumn } from '../../types';
+import {
+  NODE_TYPES,
+  type ErEdge,
+  type ErNode,
+  type ErNodeData,
+  type TableColumn,
+} from '../../types';
 
 type PropertiesPanelProps = {
   selectedIds: string[];
-  nodes: DiagramNode[];
-  connections: Connection[];
-  updateNode: (id: string, changes: Partial<DiagramNode>) => void;
-  updateConnection: (id: string, changes: Partial<Connection>) => void;
+  nodes: ErNode[];
+  edges: ErEdge[];
+  updateNode: (id: string, changes: Partial<ErNodeData>) => void;
+  updateEdge: (id: string, changes: Partial<NonNullable<ErEdge['data']>>) => void;
   deleteSelected: (idOverride?: string | null) => void;
 };
 
@@ -35,9 +41,9 @@ const CARDINALITY_OPTIONS = [
 export const PropertiesPanel = ({
   selectedIds,
   nodes,
-  connections,
+  edges,
   updateNode,
-  updateConnection,
+  updateEdge,
   deleteSelected,
 }: PropertiesPanelProps) => {
   if (selectedIds.length !== 1) {
@@ -50,6 +56,7 @@ export const PropertiesPanel = ({
           <h3 className="text-slate-800 font-bold mb-1">{selectedIds.length} Itens Selecionados</h3>
           <p className="text-slate-500 text-xs mb-6">Propriedades em massa indisponíveis.</p>
           <button
+            type="button"
             onClick={() => deleteSelected()}
             className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
           >
@@ -63,9 +70,9 @@ export const PropertiesPanel = ({
 
   const selectedId = selectedIds[0];
   const selectedNode = nodes.find((n) => n.id === selectedId);
-  const selectedConnection = connections.find((c) => c.id === selectedId);
+  const selectedEdge = edges.find((e) => e.id === selectedId);
 
-  const handleUpdate = (field: keyof DiagramNode, value: unknown) => {
+  const handleUpdate = (field: keyof ErNodeData, value: unknown) => {
     if (selectedNode) updateNode(selectedId, { [field]: value });
   };
 
@@ -78,7 +85,11 @@ export const PropertiesPanel = ({
       <div className="p-6 flex-1">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Propriedades</h2>
-          <button onClick={() => deleteSelected(null)} className="text-slate-400 hover:text-slate-600">
+          <button
+            type="button"
+            onClick={() => deleteSelected(null)}
+            className="text-slate-400 hover:text-slate-600"
+          >
             <X size={20} />
           </button>
         </div>
@@ -94,13 +105,15 @@ export const PropertiesPanel = ({
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium capitalize">{selectedNode.type}</p>
-                <p className="font-bold text-slate-800 text-lg truncate max-w-[150px]">{selectedNode.label}</p>
+                <p className="font-bold text-slate-800 text-lg truncate max-w-[150px]">
+                  {selectedNode.data.label}
+                </p>
               </div>
             </div>
 
             <PropertyInput
               label="Nome / Rótulo"
-              value={selectedNode.label}
+              value={selectedNode.data.label}
               onChange={(val) => handleUpdate('label', val)}
             />
 
@@ -109,7 +122,7 @@ export const PropertiesPanel = ({
                 <span className="text-sm font-medium text-slate-700">Entidade Fraca?</span>
                 <input
                   type="checkbox"
-                  checked={selectedNode.isWeak || false}
+                  checked={selectedNode.data.isWeak || false}
                   onChange={(e) => handleUpdate('isWeak', e.target.checked)}
                   className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                 />
@@ -120,7 +133,7 @@ export const PropertiesPanel = ({
               <PropertyInput
                 label="Tipo"
                 type="select"
-                value={selectedNode.attrType}
+                value={selectedNode.data.attrType}
                 onChange={(val) => handleUpdate('attrType', val)}
                 options={[
                   { value: 'normal', label: 'Normal' },
@@ -138,9 +151,10 @@ export const PropertiesPanel = ({
                     Colunas
                   </label>
                   <button
+                    type="button"
                     onClick={() =>
                       handleUpdateTableCol([
-                        ...(selectedNode.columns || []),
+                        ...(selectedNode.data.columns || []),
                         { id: generateId(), name: 'nova', type: 'INT', isPk: false },
                       ])
                     }
@@ -150,7 +164,7 @@ export const PropertiesPanel = ({
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {selectedNode.columns?.map((col) => (
+                  {selectedNode.data.columns?.map((col) => (
                     <div
                       key={col.id}
                       className="p-2 bg-slate-50 rounded-lg border border-slate-200 flex flex-col gap-2"
@@ -160,7 +174,7 @@ export const PropertiesPanel = ({
                           value={col.name}
                           onChange={(e) =>
                             handleUpdateTableCol(
-                              (selectedNode.columns || []).map((c) =>
+                              (selectedNode.data.columns || []).map((c) =>
                                 c.id === col.id ? { ...c, name: e.target.value } : c,
                               ),
                             )
@@ -168,9 +182,10 @@ export const PropertiesPanel = ({
                           className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs"
                         />
                         <button
+                          type="button"
                           onClick={() =>
                             handleUpdateTableCol(
-                              (selectedNode.columns || []).filter((c) => c.id !== col.id),
+                              (selectedNode.data.columns || []).filter((c) => c.id !== col.id),
                             )
                           }
                           className="text-red-400 hover:text-red-600"
@@ -183,7 +198,7 @@ export const PropertiesPanel = ({
                           value={col.type}
                           onChange={(e) =>
                             handleUpdateTableCol(
-                              (selectedNode.columns || []).map((c) =>
+                              (selectedNode.data.columns || []).map((c) =>
                                 c.id === col.id ? { ...c, type: e.target.value } : c,
                               ),
                             )
@@ -196,7 +211,7 @@ export const PropertiesPanel = ({
                             checked={Boolean(col.isPk)}
                             onChange={(e) =>
                               handleUpdateTableCol(
-                                (selectedNode.columns || []).map((c) =>
+                                (selectedNode.data.columns || []).map((c) =>
                                   c.id === col.id ? { ...c, isPk: e.target.checked } : c,
                                 ),
                               )
@@ -210,7 +225,7 @@ export const PropertiesPanel = ({
                             checked={Boolean(col.isFk)}
                             onChange={(e) =>
                               handleUpdateTableCol(
-                                (selectedNode.columns || []).map((c) =>
+                                (selectedNode.data.columns || []).map((c) =>
                                   c.id === col.id ? { ...c, isFk: e.target.checked } : c,
                                 ),
                               )
@@ -227,7 +242,7 @@ export const PropertiesPanel = ({
           </div>
         )}
 
-        {selectedConnection && (
+        {selectedEdge && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
@@ -241,15 +256,15 @@ export const PropertiesPanel = ({
             <PropertyInput
               label="Cardinalidade Origem"
               type="select"
-              value={selectedConnection.cardinalitySource}
-              onChange={(val) => updateConnection(selectedId, { cardinalitySource: val })}
+              value={selectedEdge.data?.cardinalitySource ?? ''}
+              onChange={(val) => updateEdge(selectedId, { cardinalitySource: val })}
               options={CARDINALITY_OPTIONS}
             />
             <PropertyInput
               label="Cardinalidade Destino"
               type="select"
-              value={selectedConnection.cardinalityTarget}
-              onChange={(val) => updateConnection(selectedId, { cardinalityTarget: val })}
+              value={selectedEdge.data?.cardinalityTarget ?? ''}
+              onChange={(val) => updateEdge(selectedId, { cardinalityTarget: val })}
               options={CARDINALITY_OPTIONS}
             />
           </div>
@@ -258,6 +273,7 @@ export const PropertiesPanel = ({
 
       <div className="p-6 border-t border-slate-100 bg-slate-50">
         <button
+          type="button"
           onClick={() => deleteSelected()}
           className="w-full py-3 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm shadow-sm"
         >

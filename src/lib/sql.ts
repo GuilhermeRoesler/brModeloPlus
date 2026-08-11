@@ -1,14 +1,15 @@
-import { NODE_TYPES, type DiagramNode } from '../types';
+import { NODE_TYPES, type ErNode } from '../types';
 
-export const generateSQL = (nodes: DiagramNode[]) => {
+export const generateSQL = (nodes: ErNode[]) => {
   const tables = nodes.filter((n) => n.type === NODE_TYPES.TABLE);
   if (tables.length === 0) return '-- Nenhuma tabela encontrada para gerar SQL.';
 
   return tables
     .map((table) => {
-      let sql = `CREATE TABLE ${table.label.replace(/\s+/g, '_').toLowerCase()} (\n`;
+      const label = table.data.label.replace(/\s+/g, '_').toLowerCase();
+      let sql = `CREATE TABLE ${label} (\n`;
       const pks: string[] = [];
-      const colDefs = (table.columns || []).map((col) => {
+      const colDefs = (table.data.columns || []).map((col) => {
         if (col.isPk) pks.push(col.name);
         return `  ${col.name} ${col.type}${col.isFk ? ' -- FK' : ''}`;
       });

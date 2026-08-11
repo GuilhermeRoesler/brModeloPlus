@@ -1,19 +1,37 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactFlowProvider, useReactFlow, useStore } from '@xyflow/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactFlowProvider,
+  applyEdgeChanges,
+  applyNodeChanges,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+  useStore,
+  type EdgeChange,
+  type NodeChange,
+} from '@xyflow/react';
 import { ZoomIn, ZoomOut } from 'lucide-react';
 import { saveRoom, subscribeToRoom } from '../../services/rooms';
 import { autoLayout } from '../../lib/autoLayout';
-import { attributeOffsetX, getNodeCenter, topLeftFromCenter } from '../../lib/nodeGeometry';
-import { findAttributeOwnerId as resolveAttributeOwner } from '../../lib/reactFlowAdapter';
+import {
+  createErEdge,
+  createErNode,
+  findAttributeOwnerId,
+  normalizeErEdges,
+  normalizeErNodes,
+  patchNodeData,
+} from '../../lib/diagramFlow';
+import { getNodeSize, topLeftFromCenter } from '../../lib/nodeGeometry';
 import { generateId } from '../../lib/utils';
 import {
   MODES,
   NODE_TYPES,
+  ROOM_VERSION,
   type AppUser,
-  type Connection,
-  type DiagramNode,
+  type ErEdge,
+  type ErNode,
+  type ErNodeData,
   type Mode,
-  type RemoteCursor,
   type Tool,
 } from '../../types';
 import { CanvasBoard } from './CanvasBoard';
@@ -67,137 +85,170 @@ const ZoomControls = () => {
   );
 };
 
-const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
+const selectedIdsFrom = (nodes: ErNode[], edges: ErEdge[]) => [
+  ...nodes.filter((n) => n.selected).map((n) => n.id),
+  ...edges.filter((e) => e.selected).map((e) => e.id),
+];
+
+const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const [mode, setMode] = useState<Mode>(MODES.CONCEPTUAL);
-  const [nodes, setNodes] = useState<DiagramNode[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [nodes, setNodes] = useNodesState<ErNode>([]);
+  const [edges, setEdges] = useEdgesState<ErEdge>([]);
   const [tool, setTool] = useState<Tool>('select');
-  const [onlineUsers, setOnlineUsers] = useState(0);
   const [showSql, setShowSql] = useState(false);
-  const [cursors, setCursors] = useState<RemoteCursor[]>([]);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [fitRequestId, setFitRequestId] = useState(0);
+  const [roomReady, setRoomReady] = useState(false);
 
-  const isDraggingNode = useRef(false);
   const nodesRef = useRef(nodes);
-  const connectionsRef = useRef(connections);
+  const edgesRef = useRef(edges);
   const modeRef = useRef(mode);
-  const selectedIdsRef = useRef(selectedIds);
   const editingLabelIdRef = useRef(editingLabelId);
 
-  useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
-  useEffect(() => {
-    connectionsRef.current = connections;
-  }, [connections]);
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
-  useEffect(() => {
-    selectedIdsRef.current = selectedIds;
-  }, [selectedIds]);
-  useEffect(() => {
-    editingLabelIdRef.current = editingLabelId;
-  }, [editingLabelId]);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+  modeRef.current = mode;
+  editingLabelIdRef.current = editingLabelId;
+
+  const selectedIds = useMemo(
+    () => selectedIdsFrom(nodes, edges),
+    [nodes, edges],
+  );
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+
+  const persist = useCallback(
+    (newNodes?: ErNode[], newEdges?: ErEdge[], newMode?: Mode) => {
+      void saveRoom(roomId, {
+        nodes: newNodes ?? nodesRef.current,
+        edges: newEdges ?? edgesRef.current,
+        mode: newMode ?? modeRef.current,
+        version: ROOM_VERSION,
+      });
+    },
+    [roomId],
+  );
 
   useEffect(() => {
+    setRoomReady(false);
     const unsub = subscribeToRoom(roomId, {
-      shouldIgnoreRemote: () => isDraggingNode.current,
       onRoomData: (data) => {
         setNodes(data.nodes);
-        setConnections(data.connections);
+        setEdges(data.edges);
         setMode(data.mode);
-      },
-      onCursors: (activeCursors) => {
-        setCursors(activeCursors);
-        setOnlineUsers(activeCursors.length);
+        setRoomReady(true);
       },
     });
     return () => unsub?.();
-  }, [roomId]);
-
-  const persist = async (
-    newNodes?: DiagramNode[],
-    newConns?: Connection[],
-    newMode?: Mode,
-  ) => {
-    await saveRoom(roomId, {
-      nodes: newNodes ?? nodesRef.current,
-      connections: newConns ?? connectionsRef.current,
-      mode: newMode ?? modeRef.current,
-      coordSpace: 'topLeft',
-    });
-  };
+  }, [roomId, setNodes, setEdges]);
 
   const requestFit = () => setFitRequestId((n) => n + 1);
 
   const commitDiagram = async (
-    nextNodes: DiagramNode[],
-    nextConns: Connection[] = connectionsRef.current,
+    nextNodes: ErNode[],
+    nextEdges: ErEdge[] = edgesRef.current,
     options: { fit?: boolean; layout?: boolean } = {},
   ) => {
     const { fit = true, layout = true } = options;
-    const next =
+    const laidOut =
       layout && nextNodes.length > 0
-        ? await autoLayout(nextNodes, nextConns)
-        : nextNodes;
-    setNodes(next);
-    setConnections(nextConns);
-    nodesRef.current = next;
-    connectionsRef.current = nextConns;
+        ? await autoLayout(nextNodes, nextEdges)
+        : normalizeErNodes(nextNodes);
+    const nextEdgeList = normalizeErEdges(nextEdges);
+    setNodes(laidOut);
+    setEdges(nextEdgeList);
+    nodesRef.current = laidOut;
+    edgesRef.current = nextEdgeList;
     if (fit) requestFit();
-    void persist(next, nextConns);
-    return next;
+    persist(laidOut, nextEdgeList);
+    return laidOut;
   };
 
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<ErNode>[]) => {
+      const filtered = changes.filter((c) => c.type !== 'dimensions');
+      if (filtered.length === 0) return;
+
+      const shouldPersist = filtered.some(
+        (c) =>
+          c.type === 'remove' ||
+          (c.type === 'position' && c.dragging === false),
+      );
+
+      setNodes((nds) => {
+        const next = applyNodeChanges(filtered, nds);
+        nodesRef.current = next;
+        if (shouldPersist) {
+          queueMicrotask(() => persist(next, edgesRef.current));
+        }
+        return next;
+      });
+    },
+    [setNodes, persist],
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange<ErEdge>[]) => {
+      const shouldPersist = changes.some(
+        (c) => c.type === 'remove' || c.type === 'add',
+      );
+
+      setEdges((eds) => {
+        const next = applyEdgeChanges(changes, eds);
+        edgesRef.current = next;
+        if (shouldPersist) {
+          queueMicrotask(() => persist(nodesRef.current, next));
+        }
+        return next;
+      });
+    },
+    [setEdges, persist],
+  );
+
   const addNodeAt = (flowPos: { x: number; y: number }) => {
-    let draft: Omit<DiagramNode, 'x' | 'y'> | null = null;
+    let type: (typeof NODE_TYPES)[keyof typeof NODE_TYPES] | null = null;
+    let label = '';
+    let data: Partial<ErNodeData> = {};
 
     if (tool === 'entity') {
-      draft = {
-        id: generateId(),
-        type: NODE_TYPES.ENTITY,
-        label: 'Entidade',
-        isWeak: false,
-      };
+      type = NODE_TYPES.ENTITY;
+      label = 'Entidade';
+      data = { isWeak: false };
     } else if (tool === 'relationship') {
-      draft = {
-        id: generateId(),
-        type: NODE_TYPES.RELATIONSHIP,
-        label: 'Rel',
-      };
+      type = NODE_TYPES.RELATIONSHIP;
+      label = 'Rel';
     } else if (tool === 'table') {
-      draft = {
-        id: generateId(),
-        type: NODE_TYPES.TABLE,
-        label: 'Tabela',
+      type = NODE_TYPES.TABLE;
+      label = 'Tabela';
+      data = {
         columns: [{ id: generateId(), name: 'id', type: 'INT', isPk: true }],
       };
     }
-    if (!draft) return;
+    if (!type) return;
 
-    const topLeft = topLeftFromCenter(flowPos, draft);
-    const newNode: DiagramNode = { ...draft, x: topLeft.x, y: topLeft.y };
+    const topLeft = topLeftFromCenter(flowPos, { type, data });
+    const newNode = createErNode({
+      id: generateId(),
+      type,
+      position: topLeft,
+      label,
+      data,
+    });
+    newNode.selected = true;
 
-    void commitDiagram([...nodesRef.current, newNode]);
+    const cleared = nodesRef.current.map((n) => ({ ...n, selected: false }));
+    const clearedEdges = edgesRef.current.map((e) => ({ ...e, selected: false }));
+    void commitDiagram([...cleared, newNode], clearedEdges);
     setTool('select');
-    setSelectedIds([newNode.id]);
   };
 
-  const findAttributeOwnerId = (attrId: string) =>
-    resolveAttributeOwner(attrId, nodesRef.current, connectionsRef.current);
-
   const linkedAttributesOf = (ownerId: string) => {
-    const nodesList = nodesRef.current;
-    const conns = connectionsRef.current;
-    const attrs: DiagramNode[] = [];
-    for (const c of conns) {
+    const attrs: ErNode[] = [];
+    for (const e of edgesRef.current) {
       const other =
-        c.source === ownerId ? c.target : c.target === ownerId ? c.source : null;
+        e.source === ownerId ? e.target : e.target === ownerId ? e.source : null;
       if (!other) continue;
-      const n = nodesList.find((x) => x.id === other);
+      const n = nodesRef.current.find((x) => x.id === other);
       if (n?.type === NODE_TYPES.ATTRIBUTE) attrs.push(n);
     }
     return attrs;
@@ -213,52 +264,40 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
       return;
     }
 
-    const ownerCenter = getNodeCenter(owner);
     const siblings = linkedAttributesOf(ownerId);
-    const side: 1 | -1 =
-      siblings.length > 0
-        ? getNodeCenter(siblings[0]).x >= ownerCenter.x
-          ? 1
-          : -1
-        : 1;
-    const centerY =
-      siblings.length === 0
-        ? ownerCenter.y
-        : Math.max(...siblings.map((s) => getNodeCenter(s).y)) + 32;
+    const ownerSize = getNodeSize(owner);
+    const topLeft = {
+      x: owner.position.x + ownerSize.width + 48,
+      y: owner.position.y + siblings.length * 28,
+    };
 
-    const draft: Pick<DiagramNode, 'id' | 'type' | 'label' | 'attrType'> = {
-      id: generateId(),
+    const attrId = generateId();
+    const newAttr = createErNode({
+      id: attrId,
       type: NODE_TYPES.ATTRIBUTE,
+      position: topLeft,
       label: '',
-      attrType: 'normal',
-    };
-    const topLeft = topLeftFromCenter(
-      { x: ownerCenter.x + side * attributeOffsetX(owner), y: centerY },
-      draft,
-    );
+      data: { attrType: 'normal' },
+    });
+    newAttr.selected = true;
 
-    const newAttr: DiagramNode = {
-      ...draft,
-      x: topLeft.x,
-      y: topLeft.y,
-    };
-    const newConn: Connection = {
+    const newEdge = createErEdge({
       id: generateId(),
       source: ownerId,
-      target: newAttr.id,
-      cardinalitySource: '',
-      cardinalityTarget: '',
-    };
+      target: attrId,
+    });
+
+    const cleared = nodesRef.current.map((n) => ({ ...n, selected: false }));
+    const clearedEdges = edgesRef.current.map((e) => ({ ...e, selected: false }));
 
     void commitDiagram(
-      [...nodesRef.current, newAttr],
-      [...connectionsRef.current, newConn],
+      [...cleared, newAttr],
+      [...clearedEdges, newEdge],
       { fit: false, layout: false },
     );
     setTool('select');
-    setSelectedIds([newAttr.id]);
-    editingLabelIdRef.current = newAttr.id;
-    setEditingLabelId(newAttr.id);
+    editingLabelIdRef.current = attrId;
+    setEditingLabelId(attrId);
   };
 
   const resolveOwnerForEnter = (): string | null => {
@@ -273,25 +312,25 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
       return selected.id;
     }
     if (selected.type === NODE_TYPES.ATTRIBUTE) {
-      return findAttributeOwnerId(selected.id);
+      return findAttributeOwnerId(
+        selected.id,
+        nodesRef.current,
+        edgesRef.current,
+      );
     }
     return null;
   };
 
   const finalizeLabelIfEmpty = (id: string) => {
     const node = nodesRef.current.find((n) => n.id === id);
-    if (!node || node.label.trim()) return;
-    const updated = nodesRef.current.map((n) =>
-      n.id === id ? { ...n, label: 'Atributo' } : n,
-    );
+    if (!node || node.data.label.trim()) return;
+    const updated = patchNodeData(nodesRef.current, id, { label: 'Atributo' });
     nodesRef.current = updated;
     setNodes(updated);
   };
 
   const handleInlineLabelChange = (id: string, label: string) => {
-    const updated = nodesRef.current.map((n) =>
-      n.id === id ? { ...n, label } : n,
-    );
+    const updated = patchNodeData(nodesRef.current, id, { label });
     nodesRef.current = updated;
     setNodes(updated);
   };
@@ -301,13 +340,17 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
     finalizeLabelIfEmpty(id);
     editingLabelIdRef.current = null;
     setEditingLabelId(null);
-    void persist(nodesRef.current, connectionsRef.current);
+    persist();
   };
 
   const handleInlineLabelSubmit = (id: string) => {
     finalizeLabelIfEmpty(id);
-    void persist(nodesRef.current, connectionsRef.current);
-    const ownerId = findAttributeOwnerId(id);
+    persist();
+    const ownerId = findAttributeOwnerId(
+      id,
+      nodesRef.current,
+      edgesRef.current,
+    );
     if (ownerId) createLinkedAttribute(ownerId);
   };
 
@@ -345,37 +388,20 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePersistNodes = useCallback(
-    (next: DiagramNode[]) => {
-      isDraggingNode.current = false;
-      nodesRef.current = next;
-      setNodes(next);
-      void persist(next);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roomId],
-  );
-
-  const handleDraggingChange = useCallback((dragging: boolean) => {
-    isDraggingNode.current = dragging;
-  }, []);
-
   const handleConnect = useCallback((source: string, target: string) => {
-    const exists = connectionsRef.current.some(
+    const exists = edgesRef.current.some(
       (c) =>
         (c.source === source && c.target === target) ||
         (c.source === target && c.target === source),
     );
     if (exists) return;
 
-    const newConn: Connection = {
+    const newEdge = createErEdge({
       id: generateId(),
       source,
       target,
-      cardinalitySource: '',
-      cardinalityTarget: '',
-    };
-    void commitDiagram(nodesRef.current, [...connectionsRef.current, newConn], {
+    });
+    void commitDiagram(nodesRef.current, [...edgesRef.current, newEdge], {
       fit: false,
       layout: false,
     });
@@ -383,18 +409,19 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateNode = (id: string, changes: Partial<DiagramNode>) => {
-    const updated = nodesRef.current.map((n) =>
-      n.id === id ? { ...n, ...changes } : n,
-    );
-    void commitDiagram(updated, connectionsRef.current, { fit: false });
+  const updateNode = (id: string, changes: Partial<ErNodeData>) => {
+    const updated = patchNodeData(nodesRef.current, id, changes);
+    void commitDiagram(updated, edgesRef.current, { fit: false, layout: false });
   };
 
-  const updateConnection = (id: string, changes: Partial<Connection>) => {
-    const updated = connectionsRef.current.map((c) =>
-      c.id === id ? { ...c, ...changes } : c,
+  const updateEdge = (
+    id: string,
+    changes: Partial<NonNullable<ErEdge['data']>>,
+  ) => {
+    const updated = edgesRef.current.map((e) =>
+      e.id === id ? { ...e, data: { ...e.data, ...changes } } : e,
     );
-    void commitDiagram(nodesRef.current, updated, { fit: false });
+    void commitDiagram(nodesRef.current, updated, { fit: false, layout: false });
   };
 
   const deleteSelected = (idOverride?: string | null) => {
@@ -402,25 +429,32 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
     if (idsToDelete.length === 0) return;
 
     const newNodes = nodesRef.current.filter((n) => !idsToDelete.includes(n.id));
-    const newConns = connectionsRef.current.filter(
-      (c) =>
-        !idsToDelete.includes(c.id) &&
-        !idsToDelete.includes(c.source) &&
-        !idsToDelete.includes(c.target),
+    const newEdges = edgesRef.current.filter(
+      (e) =>
+        !idsToDelete.includes(e.id) &&
+        !idsToDelete.includes(e.source) &&
+        !idsToDelete.includes(e.target),
     );
 
-    setSelectedIds([]);
-    void commitDiagram(newNodes, newConns);
+    void commitDiagram(newNodes, newEdges, { fit: false, layout: false });
   };
 
   const handleChangeMode = (m: Mode) => {
     setMode(m);
-    void persist(undefined, undefined, m);
+    persist(undefined, undefined, m);
   };
 
   const handleAutoLayout = () => {
-    void commitDiagram(nodesRef.current, connectionsRef.current);
+    void commitDiagram(nodesRef.current, edgesRef.current);
   };
+
+  if (!roomReady) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-slate-100 text-slate-500 text-sm">
+        Carregando diagrama…
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-screen flex flex-col bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
@@ -430,7 +464,6 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
         onChangeMode={handleChangeMode}
         showSql={showSql}
         onToggleSql={() => setShowSql((v) => !v)}
-        onlineUsers={onlineUsers}
       />
 
       <div className="flex-1 flex relative overflow-hidden">
@@ -443,27 +476,12 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
 
         <CanvasBoard
           nodes={nodes}
-          connections={connections}
+          edges={edges}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
           tool={tool}
-          selectedIds={selectedIds}
-          onSelectedIdsChange={(ids) => {
-            setSelectedIds((prev) => {
-              if (
-                prev.length === ids.length &&
-                prev.every((id, i) => id === ids[i])
-              ) {
-                return prev;
-              }
-              return ids;
-            });
-          }}
-          onPersistNodes={handlePersistNodes}
-          onDraggingChange={handleDraggingChange}
           onConnect={handleConnect}
           onPaneAddNode={addNodeAt}
-          cursors={cursors}
-          currentUserId={user.uid}
-          roomId={roomId}
           editingLabelId={editingLabelId}
           onInlineLabelChange={handleInlineLabelChange}
           onInlineLabelEnd={handleInlineLabelEnd}
@@ -480,9 +498,9 @@ const EditorWorkspace = ({ user, roomId, onBack }: EditorScreenProps) => {
         <PropertiesPanel
           selectedIds={selectedIds}
           nodes={nodes}
-          connections={connections}
+          edges={edges}
           updateNode={updateNode}
-          updateConnection={updateConnection}
+          updateEdge={updateEdge}
           deleteSelected={deleteSelected}
         />
       </div>

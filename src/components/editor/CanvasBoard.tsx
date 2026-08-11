@@ -2,8 +2,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
-  useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import {
@@ -11,28 +9,18 @@ import {
   BackgroundVariant,
   ConnectionMode,
   ReactFlow,
-  applyNodeChanges,
   useReactFlow,
   type Connection as RfConnection,
   type Edge,
-  type NodeChange,
-  type OnSelectionChangeParams,
+  type OnEdgesChange,
+  type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { updateRemoteCursor } from '../../services/rooms';
-import {
-  fromFlowNodes,
-  pruneChildSelection,
-  toFlowEdges,
-  toFlowNodes,
-  type DiagramFlowNode,
-} from '../../lib/reactFlowAdapter';
-import type { Connection, DiagramNode, RemoteCursor, Tool } from '../../types';
+import type { ErEdge, ErNode, Tool } from '../../types';
 import { AttributeNode } from './flow/AttributeNode';
 import { CardinalityEdge } from './flow/CardinalityEdge';
 import { DiagramFlowProvider } from './flow/DiagramFlowContext';
 import { EntityNode, RelationshipNode, TableNode } from './flow/nodes';
-import { RemoteCursors } from './flow/RemoteCursors';
 
 const nodeTypes = {
   entity: EntityNode,
@@ -46,18 +34,13 @@ const edgeTypes = {
 };
 
 type CanvasBoardProps = {
-  nodes: DiagramNode[];
-  connections: Connection[];
+  nodes: ErNode[];
+  edges: ErEdge[];
+  onNodesChange: OnNodesChange<ErNode>;
+  onEdgesChange: OnEdgesChange<ErEdge>;
   tool: Tool;
-  selectedIds: string[];
-  onSelectedIdsChange: (ids: string[]) => void;
-  onPersistNodes: (nodes: DiagramNode[]) => void;
-  onDraggingChange?: (dragging: boolean) => void;
   onConnect: (source: string, target: string) => void;
   onPaneAddNode: (flowPos: { x: number; y: number }) => void;
-  cursors: RemoteCursor[];
-  currentUserId?: string;
-  roomId: string;
   editingLabelId?: string | null;
   onInlineLabelChange?: (id: string, label: string) => void;
   onInlineLabelEnd?: (id: string) => void;
@@ -77,51 +60,14 @@ const FitController = ({ fitRequestId }: { fitRequestId: number }) => {
   return null;
 };
 
-/** Conteúdo do diagrama (sem seleção) — remonta RF quando domínio muda. */
-const diagramSignature = (nodes: DiagramNode[], connections: Connection[]) => {
-  const n = nodes
-    .map(
-      (node) =>
-        `${node.id}:${node.x}:${node.y}:${node.label}:${node.type}:${node.isWeak ? 1 : 0}:${node.attrType ?? ''}:${node.columns?.length ?? 0}`,
-    )
-    .join('|');
-  const c = connections
-    .map(
-      (conn) =>
-        `${conn.id}:${conn.source}:${conn.target}:${conn.cardinalitySource}:${conn.cardinalityTarget}`,
-    )
-    .join('|');
-  return `${n}#${c}`;
-};
-
-const applySelection = (
-  rfNodes: DiagramFlowNode[],
-  selectedIds: string[],
-): DiagramFlowNode[] => {
-  const selected = new Set(selectedIds);
-  let changed = false;
-  const next = rfNodes.map((n) => {
-    const isSelected = selected.has(n.id);
-    if (!!n.selected === isSelected) return n;
-    changed = true;
-    return { ...n, selected: isSelected };
-  });
-  return changed ? next : rfNodes;
-};
-
 export const CanvasBoard = ({
   nodes,
-  connections,
+  edges,
+  onNodesChange,
+  onEdgesChange,
   tool,
-  selectedIds,
-  onSelectedIdsChange,
-  onPersistNodes,
-  onDraggingChange,
   onConnect,
   onPaneAddNode,
-  cursors,
-  currentUserId,
-  roomId,
   editingLabelId = null,
   onInlineLabelChange,
   onInlineLabelEnd,
@@ -129,40 +75,6 @@ export const CanvasBoard = ({
   fitRequestId = 0,
 }: CanvasBoardProps) => {
   const { screenToFlowPosition } = useReactFlow();
-  const nodesRef = useRef(nodes);
-  const connectionsRef = useRef(connections);
-  const draggingRef = useRef(false);
-  const signatureRef = useRef(diagramSignature(nodes, connections));
-  const selectingFromPropsRef = useRef(false);
-
-  nodesRef.current = nodes;
-  connectionsRef.current = connections;
-
-  const [rfNodes, setRfNodes] = useState<DiagramFlowNode[]>(() =>
-    toFlowNodes(nodes, connections, selectedIds),
-  );
-  const [rfEdges, setRfEdges] = useState(() => toFlowEdges(connections, selectedIds));
-
-  // Domínio → RF quando o diagrama muda (load remoto, create, layout, props)
-  useEffect(() => {
-    if (draggingRef.current) return;
-    const nextSig = diagramSignature(nodes, connections);
-    if (nextSig === signatureRef.current) return;
-    signatureRef.current = nextSig;
-    setRfNodes(toFlowNodes(nodes, connections, selectedIds));
-    setRfEdges(toFlowEdges(connections, selectedIds));
-  }, [nodes, connections, selectedIds]);
-
-  // Seleção externa (Enter cria atributo, delete, etc.)
-  useEffect(() => {
-    if (draggingRef.current) return;
-    selectingFromPropsRef.current = true;
-    setRfNodes((prev) => applySelection(prev, selectedIds));
-    setRfEdges(toFlowEdges(connectionsRef.current, selectedIds));
-    queueMicrotask(() => {
-      selectingFromPropsRef.current = false;
-    });
-  }, [selectedIds]);
 
   const contextValue = useMemo(
     () => ({
@@ -181,65 +93,6 @@ export const CanvasBoard = ({
     ],
   );
 
-  const handleNodesChange = useCallback(
-    (changes: NodeChange<DiagramFlowNode>[]) => {
-      // `dimensions` causa loop com StoreUpdater; select vem de onSelectionChange/props
-      const filtered = changes.filter(
-        (c) => c.type !== 'dimensions' && c.type !== 'select',
-      );
-      if (filtered.length === 0) return;
-
-      let dragStarted = false;
-      let dragEnded = false;
-
-      for (const change of filtered) {
-        if (change.type !== 'position') continue;
-        if (change.dragging === true) dragStarted = true;
-        if (change.dragging === false) dragEnded = true;
-      }
-
-      if (dragStarted && !draggingRef.current) {
-        draggingRef.current = true;
-        onDraggingChange?.(true);
-      }
-
-      setRfNodes((current) => {
-        const next = applyNodeChanges(filtered, current);
-
-        if (dragEnded) {
-          // parentId do RF já moveu os atributos; só converte absoluto → domínio
-          const merged = fromFlowNodes(next, nodesRef.current);
-          nodesRef.current = merged;
-          signatureRef.current = diagramSignature(merged, connectionsRef.current);
-          queueMicrotask(() => {
-            onPersistNodes(merged);
-            draggingRef.current = false;
-            onDraggingChange?.(false);
-          });
-        }
-
-        return next;
-      });
-    },
-    [onDraggingChange, onPersistNodes],
-  );
-
-  const handleSelectionChange = useCallback(
-    ({ nodes: selNodes, edges: selEdges }: OnSelectionChangeParams) => {
-      if (tool === 'connection') return;
-      if (draggingRef.current) return;
-      if (selectingFromPropsRef.current) return;
-
-      const nodeIds = pruneChildSelection(
-        selNodes.map((n) => n.id),
-        rfNodes,
-      );
-      const ids = [...nodeIds, ...selEdges.map((e) => e.id)];
-      onSelectedIdsChange(ids);
-    },
-    [onSelectedIdsChange, tool, rfNodes],
-  );
-
   const handlePaneClick = useCallback(
     (e: ReactMouseEvent) => {
       if (editingLabelId && onInlineLabelEnd) {
@@ -254,21 +107,15 @@ export const CanvasBoard = ({
     [editingLabelId, onInlineLabelEnd, tool, screenToFlowPosition, onPaneAddNode],
   );
 
-  const handleEdgeClick = useCallback(
-    (_e: ReactMouseEvent, edge: Edge) => {
-      if (tool === 'connection') return;
-      onSelectedIdsChange([edge.id]);
-    },
-    [onSelectedIdsChange, tool],
+  const isDuplicate = useCallback(
+    (source: string, target: string) =>
+      edges.some(
+        (c) =>
+          (c.source === source && c.target === target) ||
+          (c.source === target && c.target === source),
+      ),
+    [edges],
   );
-
-  const isDuplicate = useCallback((source: string, target: string) => {
-    return connectionsRef.current.some(
-      (c) =>
-        (c.source === source && c.target === target) ||
-        (c.source === target && c.target === source),
-    );
-  }, []);
 
   const handleConnect = useCallback(
     (connection: RfConnection) => {
@@ -290,14 +137,6 @@ export const CanvasBoard = ({
     [isDuplicate],
   );
 
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      updateRemoteCursor(roomId, currentUserId ?? '', pos.x, pos.y);
-    },
-    [screenToFlowPosition, roomId, currentUserId],
-  );
-
   const isPlacementTool =
     tool === 'entity' || tool === 'relationship' || tool === 'table';
   const isConnectionTool = tool === 'connection';
@@ -307,18 +146,16 @@ export const CanvasBoard = ({
       <div
         className="flex-1 relative h-full w-full"
         id="diagram-canvas"
-        onPointerMove={handlePointerMove}
         onContextMenu={(e) => e.preventDefault()}
       >
         <ReactFlow
-          nodes={rfNodes}
-          edges={rfEdges}
+          nodes={nodes}
+          edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onNodesChange={handleNodesChange}
-          onSelectionChange={handleSelectionChange}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           onPaneClick={handlePaneClick}
-          onEdgeClick={handleEdgeClick}
           onConnect={handleConnect}
           isValidConnection={isValidConnection}
           connectionMode={ConnectionMode.Loose}
@@ -332,13 +169,13 @@ export const CanvasBoard = ({
           zoomOnPinch
           selectionKeyCode="Shift"
           multiSelectionKeyCode="Shift"
+          deleteKeyCode={['Backspace', 'Delete']}
           minZoom={0.1}
           maxZoom={3}
           proOptions={{ hideAttribution: true }}
           className={isPlacementTool || isConnectionTool ? 'cursor-crosshair' : ''}
           defaultEdgeOptions={{ type: 'cardinality' }}
           fitView={false}
-          deleteKeyCode={null}
         >
           <Background
             id="grid"
@@ -356,7 +193,6 @@ export const CanvasBoard = ({
             </div>
           ) : null}
         </ReactFlow>
-        <RemoteCursors cursors={cursors} currentUserId={currentUserId} />
       </div>
     </DiagramFlowProvider>
   );

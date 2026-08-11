@@ -1,3 +1,5 @@
+import type { Edge, Node } from '@xyflow/react';
+
 export const MODES = {
   CONCEPTUAL: 'conceitual',
   LOGICAL: 'logico',
@@ -24,9 +26,6 @@ export type Tool =
   | 'table'
   | 'connection';
 
-/** Espaço de coordenadas dos nós: top-left nativo do React Flow. */
-export type CoordSpace = 'topLeft' | 'center';
-
 export interface TableColumn {
   id: string;
   name: string;
@@ -35,35 +34,33 @@ export interface TableColumn {
   isFk?: boolean;
 }
 
-/**
- * Nó do diagrama.
- * `x`/`y` = canto superior esquerdo (mesmo modelo do React Flow).
- */
-export interface DiagramNode {
-  id: string;
-  x: number;
-  y: number;
+/** Payload de modelagem ER em `node.data` (React Flow). */
+export type ErNodeData = {
   label: string;
-  type: NodeType;
   isWeak?: boolean;
   attrType?: AttrType;
   columns?: TableColumn[];
-}
+};
 
-export interface Connection {
-  id: string;
-  source: string;
-  target: string;
-  cardinalitySource: string;
-  cardinalityTarget: string;
-}
+export type ErEdgeData = {
+  cardinalitySource?: string;
+  cardinalityTarget?: string;
+};
+
+/** Nó do diagrama = Node do React Flow. */
+export type ErNode = Node<ErNodeData, NodeType>;
+
+/** Aresta do diagrama = Edge do React Flow. */
+export type ErEdge = Edge<ErEdgeData>;
+
+/** Versão atual do documento de sala (RF-native). */
+export const ROOM_VERSION = 2 as const;
 
 export interface RoomData {
-  nodes: DiagramNode[];
-  connections: Connection[];
+  nodes: ErNode[];
+  edges: ErEdge[];
   mode: Mode;
-  /** Ausente ou `'center'` = legado (migrado na leitura). */
-  coordSpace?: CoordSpace;
+  version: typeof ROOM_VERSION;
 }
 
 export interface TimestampLike {
@@ -83,14 +80,6 @@ export interface AppUser {
   email: string | null;
   isAnonymous: boolean;
   isLocal?: boolean;
-}
-
-export interface RemoteCursor {
-  userId: string;
-  roomId: string;
-  x: number;
-  y: number;
-  color: string;
 }
 
 export interface Point {

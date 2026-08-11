@@ -1,5 +1,6 @@
 import type { NodeProps } from '@xyflow/react';
-import type { DiagramFlowNodeData } from '../../../lib/reactFlowAdapter';
+import { useStore } from '@xyflow/react';
+import { NODE_TYPES, type ErNodeData } from '../../../types';
 import { useDiagramFlow } from './DiagramFlowContext';
 import { NodeHandles } from './NodeHandles';
 
@@ -7,7 +8,7 @@ export const AttributeNode = ({
   id,
   data,
   selected,
-}: NodeProps & { data: DiagramFlowNodeData }) => {
+}: NodeProps & { data: ErNodeData }) => {
   const {
     editingLabelId,
     onInlineLabelChange,
@@ -15,13 +16,32 @@ export const AttributeNode = ({
     onInlineLabelSubmit,
     connectable,
   } = useDiagramFlow();
-  const node = data.diagram;
-  const labelOnLeft = data.labelOnLeft ?? false;
+
+  const labelOnLeft = useStore((s) => {
+    const me = s.nodeLookup.get(id);
+    if (!me) return false;
+    const edge = s.edges.find((e) => e.source === id || e.target === id);
+    if (!edge) return false;
+    const ownerId = edge.source === id ? edge.target : edge.source;
+    const owner = s.nodeLookup.get(ownerId);
+    if (
+      !owner ||
+      (owner.type !== NODE_TYPES.ENTITY &&
+        owner.type !== NODE_TYPES.RELATIONSHIP)
+    ) {
+      return false;
+    }
+    const mx = me.internals.positionAbsolute.x + (me.measured?.width ?? 20) / 2;
+    const ox =
+      owner.internals.positionAbsolute.x + (owner.measured?.width ?? 120) / 2;
+    return mx < ox;
+  });
+
   const isEditing = editingLabelId === id;
-  const isKey = node.attrType === 'key';
-  const isDerived = node.attrType === 'derived';
-  const isMulti = node.attrType === 'multivalued';
-  const displayLabel = node.label || 'Atributo';
+  const isKey = data.attrType === 'key';
+  const isDerived = data.attrType === 'derived';
+  const isMulti = data.attrType === 'multivalued';
+  const displayLabel = data.label || 'Atributo';
   const labelWidth = Math.max(48, displayLabel.length * 7 + 8);
   const editWidth = Math.max(96, labelWidth + 24);
 
@@ -57,7 +77,7 @@ export const AttributeNode = ({
         <input
           data-inline-label-edit=""
           autoFocus
-          value={node.label}
+          value={data.label}
           placeholder="Atributo"
           onFocus={(e) => e.currentTarget.select()}
           onChange={(e) => onInlineLabelChange(id, e.target.value)}

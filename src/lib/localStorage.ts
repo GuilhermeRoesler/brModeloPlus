@@ -1,4 +1,4 @@
-import { MODES, type Project, type RoomData } from '../types';
+import { MODES, ROOM_VERSION, type Project, type RoomData } from '../types';
 
 const LOCAL_PROJECTS_KEY = 'brmodelo-local-projects';
 
@@ -16,9 +16,9 @@ export const saveLocalProjects = (projects: Project[]) => {
   localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(projects));
 };
 
-export const loadLocalRoom = (roomId: string): RoomData | null => {
+export const loadLocalRoom = (roomId: string): unknown | null => {
   try {
-    return JSON.parse(localStorage.getItem(localRoomKey(roomId)) || 'null') as RoomData | null;
+    return JSON.parse(localStorage.getItem(localRoomKey(roomId)) || 'null');
   } catch {
     return null;
   }
@@ -34,7 +34,7 @@ export const deleteLocalRoom = (roomId: string) => {
 
 export const createEmptyRoom = (): RoomData => ({
   nodes: [],
-  connections: [],
+  edges: [],
   mode: MODES.CONCEPTUAL,
-  coordSpace: 'topLeft',
+  version: ROOM_VERSION,
 });

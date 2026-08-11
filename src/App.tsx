@@ -1,19 +1,10 @@
 import { useAuth } from './hooks/useAuth';
 import { setRoomInUrl } from './lib/utils';
-import { LoginScreen } from './components/auth/LoginScreen';
 import { DashboardScreen } from './components/dashboard/DashboardScreen';
 import { EditorScreen } from './components/editor/EditorScreen';
 
 export default function App() {
-  const {
-    user,
-    authLoading,
-    roomId,
-    setRoomId,
-    loginGuest,
-    loginGoogle,
-    logout,
-  } = useAuth();
+  const { user, roomId, setRoomId } = useAuth();
 
   const handleOpenProject = (id: string) => {
     setRoomId(id);
@@ -25,30 +16,13 @@ export default function App() {
     setRoomInUrl(null);
   };
 
-  const handleLogout = async () => {
-    await logout();
-    setRoomInUrl(null);
-  };
+  if (!user) return null;
 
-  if (!user) {
+  if (roomId) {
     return (
-      <LoginScreen
-        onLoginGoogle={() => void loginGoogle()}
-        onLoginGuest={() => void loginGuest()}
-        loading={authLoading}
-      />
+      <EditorScreen user={user} roomId={roomId} onBack={handleBackToDashboard} />
     );
   }
 
-  if (roomId) {
-    return <EditorScreen user={user} roomId={roomId} onBack={handleBackToDashboard} />;
-  }
-
-  return (
-    <DashboardScreen
-      user={user}
-      onOpenProject={handleOpenProject}
-      onLogout={() => void handleLogout()}
-    />
-  );
+  return <DashboardScreen user={user} onOpenProject={handleOpenProject} />;
 }

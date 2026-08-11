@@ -4,20 +4,17 @@ import {
   FolderPlus,
   Grid,
   LayoutGrid,
-  LogOut,
   Trash2,
 } from 'lucide-react';
-import { isRealtimeCollabEnabled } from '../../config/firebase';
 import { useProjects } from '../../hooks/useProjects';
 import type { AppUser } from '../../types';
 
 type DashboardScreenProps = {
   user: AppUser;
   onOpenProject: (roomId: string) => void;
-  onLogout: () => void;
 };
 
-export const DashboardScreen = ({ user, onOpenProject, onLogout }: DashboardScreenProps) => {
+export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) => {
   const { projects, loading, create, remove } = useProjects(user);
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -44,33 +41,13 @@ export const DashboardScreen = ({ user, onOpenProject, onLogout }: DashboardScre
             <Grid className="text-white" size={18} />
           </div>
           <h1 className="font-bold text-slate-800">Meus Projetos</h1>
-          {!isRealtimeCollabEnabled && (
-            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded uppercase tracking-wide">
-              Local
-            </span>
-          )}
+          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded uppercase tracking-wide">
+            Local
+          </span>
         </div>
-        <div className="flex items-center gap-4">
-          {user.isLocal ? (
-            <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">
-              Modo local
-            </span>
-          ) : user.isAnonymous ? (
-            <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">
-              Convidado
-            </span>
-          ) : (
-            <span className="text-xs font-medium text-slate-500">{user.email}</span>
-          )}
-          {!user.isLocal && (
-            <button
-              onClick={onLogout}
-              className="text-slate-500 hover:text-red-600 flex items-center gap-2 text-sm font-medium"
-            >
-              <LogOut size={16} /> Sair
-            </button>
-          )}
-        </div>
+        <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">
+          Modo local
+        </span>
       </header>
 
       <main className="flex-1 overflow-y-auto p-8">
@@ -78,6 +55,7 @@ export const DashboardScreen = ({ user, onOpenProject, onLogout }: DashboardScre
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-slate-800">Projetos Recentes</h2>
             <button
+              type="button"
               onClick={() => setIsCreating(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
             >
@@ -86,7 +64,7 @@ export const DashboardScreen = ({ user, onOpenProject, onLogout }: DashboardScre
           </div>
 
           {isCreating && (
-            <div className="mb-8 p-6 bg-white rounded-2xl border border-indigo-100 shadow-lg animate-in fade-in slide-in-from-top-4">
+            <div className="mb-8 p-6 bg-white rounded-2xl border border-indigo-100 shadow-lg">
               <form onSubmit={(e) => void handleCreate(e)} className="flex gap-4 items-end">
                 <div className="flex-1">
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
@@ -143,6 +121,7 @@ export const DashboardScreen = ({ user, onOpenProject, onLogout }: DashboardScre
                       <LayoutGrid size={20} />
                     </div>
                     <button
+                      type="button"
                       onClick={(e) => void handleDelete(e, project.id)}
                       className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                     >

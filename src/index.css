@@ -10,11 +10,10 @@
   cursor: grab;
 }
 
-/* Pais (entidade/rel) e atributos: filhos podem ficar fora do bbox */
+/* Pais e atributos: overflow visível para rótulos Heuser */
 .react-flow__node-entity,
 .react-flow__node-relationship,
-.react-flow__node-attribute,
-.react-flow__node-parent {
+.react-flow__node-attribute {
   overflow: visible !important;
 }
 
