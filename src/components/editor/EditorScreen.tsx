@@ -32,6 +32,7 @@ import {
   positionRightOf,
 } from '../../lib/diagramFlow';
 import { createEmptyDiagrams } from '../../lib/localStorage';
+import { syncDerivedDiagrams } from '../../lib/deriveRelational';
 import { downloadTextFile, readFileAsText } from '../../lib/fileTransfer';
 import { topLeftFromCenter } from '../../lib/nodeGeometry';
 import {
@@ -144,12 +145,16 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       const activeMode = newMode ?? modeRef.current;
       const nextNodes = newNodes ?? nodesRef.current;
       const nextEdges = newEdges ?? edgesRef.current;
-      diagramsRef.current = {
+      let diagrams: Record<Mode, ModeDiagram> = {
         ...diagramsRef.current,
         [activeMode]: { nodes: nextNodes, edges: nextEdges },
       };
+      if (activeMode === MODES.CONCEPTUAL) {
+        diagrams = syncDerivedDiagrams(diagrams);
+      }
+      diagramsRef.current = diagrams;
       void saveRoom(roomId, {
-        diagrams: diagramsRef.current,
+        diagrams,
         mode: activeMode,
         version: ROOM_VERSION,
       });
@@ -160,8 +165,9 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const applyRoomData = useCallback(
     (data: RoomData, options: { persist?: boolean; fit?: boolean } = {}) => {
       const { persist: shouldPersist = false, fit = false } = options;
-      diagramsRef.current = data.diagrams;
-      const active = data.diagrams[data.mode] ?? { nodes: [], edges: [] };
+      const diagrams = syncDerivedDiagrams(data.diagrams);
+      diagramsRef.current = diagrams;
+      const active = diagrams[data.mode] ?? { nodes: [], edges: [] };
       setMode(data.mode);
       modeRef.current = data.mode;
       setNodes(active.nodes);
@@ -174,7 +180,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       setShowSql(false);
       if (shouldPersist) {
         void saveRoom(roomId, {
-          diagrams: data.diagrams,
+          diagrams,
           mode: data.mode,
           version: ROOM_VERSION,
         });
@@ -196,13 +202,16 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   }, [roomId, applyRoomData]);
 
   const snapshotRoomData = (): RoomData => {
-    const diagrams = {
+    let diagrams: Record<Mode, ModeDiagram> = {
       ...diagramsRef.current,
       [modeRef.current]: {
         nodes: nodesRef.current,
         edges: edgesRef.current,
       },
     };
+    if (modeRef.current === MODES.CONCEPTUAL) {
+      diagrams = syncDerivedDiagrams(diagrams);
+    }
     diagramsRef.current = diagrams;
     return {
       diagrams,
@@ -241,12 +250,14 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   };
 
   const requestFit = () => setFitRequestId((n) => n + 1);
+  const isDerivedMode = mode !== MODES.CONCEPTUAL;
 
   const commitDiagram = async (
     nextNodes: ErNode[],
     nextEdges: ErEdge[] = edgesRef.current,
     options: { fit?: boolean; layout?: boolean } = {},
   ) => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return nextNodes;
     const { fit = true, layout = true } = options;
     const laidOut =
       layout && nextNodes.length > 0
@@ -264,6 +275,20 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
   const handleNodesChange = useCallback(
     (changes: NodeChange<ErNode>[]) => {
+      if (modeRef.current !== MODES.CONCEPTUAL) {
+        // Em modos derivados: só seleção / dimensões (sem mover nem excluir).
+        const allowed = changes.filter(
+          (c) => c.type === 'select' || c.type === 'dimensions',
+        );
+        if (allowed.length === 0) return;
+        setNodes((nds) => {
+          const next = applyNodeChanges(allowed, nds);
+          nodesRef.current = next;
+          return next;
+        });
+        return;
+      }
+
       const filtered = changes.filter((c) => c.type !== 'dimensions');
       if (filtered.length === 0) return;
 
@@ -295,6 +320,17 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange<ErEdge>[]) => {
+      if (modeRef.current !== MODES.CONCEPTUAL) {
+        const allowed = changes.filter((c) => c.type === 'select');
+        if (allowed.length === 0) return;
+        setEdges((eds) => {
+          const next = applyEdgeChanges(allowed, eds);
+          edgesRef.current = next;
+          return next;
+        });
+        return;
+      }
+
       const shouldPersist = changes.some(
         (c) => c.type === 'remove' || c.type === 'add',
       );
@@ -312,6 +348,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   );
 
   const addNodeAt = (flowPos: { x: number; y: number }) => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return;
     let type: (typeof NODE_TYPES)[keyof typeof NODE_TYPES] | null = null;
     let label = '';
     let data: Partial<ErNodeData> = {};
@@ -323,12 +360,6 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     } else if (tool === 'relationship') {
       type = NODE_TYPES.RELATIONSHIP;
       label = 'Rel';
-    } else if (tool === 'table') {
-      type = NODE_TYPES.TABLE;
-      label = 'Tabela';
-      data = {
-        columns: [{ id: generateId(), name: 'id', type: 'INT', isPk: true }],
-      };
     }
     if (!type) return;
 
@@ -614,6 +645,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   }, []);
 
   const handleConnect = useCallback((source: string, target: string) => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return;
     const exists = edgesRef.current.some(
       (c) =>
         (c.source === source && c.target === target) ||
@@ -635,6 +667,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   }, []);
 
   const updateNode = (id: string, changes: Partial<ErNodeData>) => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return;
     const updated = patchNodeData(nodesRef.current, id, changes);
     void commitDiagram(updated, edgesRef.current, { fit: false, layout: false });
   };
@@ -643,6 +676,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     id: string,
     changes: Partial<NonNullable<ErEdge['data']>>,
   ) => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return;
     const updated = edgesRef.current.map((e) =>
       e.id === id ? { ...e, data: { ...e.data, ...changes } } : e,
     );
@@ -653,6 +687,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     edgeId: string,
     side: CardinalitySide,
   ) => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return;
     const edge = edgesRef.current.find((e) => e.id === edgeId);
     if (!edge) return;
     const field = cardinalityFieldForSide(side);
@@ -662,6 +697,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   };
 
   const deleteSelected = (idOverride?: string | null) => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return;
     const idsToDelete = idOverride ? [idOverride] : selectedIdsRef.current;
     if (idsToDelete.length === 0) return;
 
@@ -679,15 +715,19 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const handleChangeMode = (m: Mode) => {
     if (m === modeRef.current) return;
 
-    diagramsRef.current = {
+    let diagrams: Record<Mode, ModeDiagram> = {
       ...diagramsRef.current,
       [modeRef.current]: {
         nodes: nodesRef.current,
         edges: edgesRef.current,
       },
     };
+    if (modeRef.current === MODES.CONCEPTUAL) {
+      diagrams = syncDerivedDiagrams(diagrams);
+    }
+    diagramsRef.current = diagrams;
 
-    const next = diagramsRef.current[m] ?? { nodes: [], edges: [] };
+    const next = diagrams[m] ?? { nodes: [], edges: [] };
     setMode(m);
     modeRef.current = m;
     setNodes(next.nodes);
@@ -700,7 +740,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     if (m !== MODES.PHYSICAL) setShowSql(false);
 
     void saveRoom(roomId, {
-      diagrams: diagramsRef.current,
+      diagrams,
       mode: m,
       version: ROOM_VERSION,
     });
@@ -708,6 +748,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   };
 
   const handleAutoLayout = () => {
+    if (modeRef.current !== MODES.CONCEPTUAL) return;
     void commitDiagram(nodesRef.current, edgesRef.current);
   };
 
@@ -740,6 +781,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
             setTool={setTool}
             currentMode={mode}
             onAutoLayout={handleAutoLayout}
+            derivedReadOnly={isDerivedMode}
           />
 
           <CanvasBoard
@@ -747,16 +789,17 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
             edges={edges}
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
-            tool={tool}
+            tool={isDerivedMode ? 'select' : tool}
             onConnect={handleConnect}
             onPaneAddNode={addNodeAt}
-            editingLabelId={editingLabelId}
+            editingLabelId={isDerivedMode ? null : editingLabelId}
             onInlineLabelChange={handleInlineLabelChange}
             onInlineLabelEnd={handleInlineLabelEnd}
             onInlineLabelSubmit={handleInlineLabelSubmit}
             onInlineLabelTab={handleInlineLabelTab}
             onCycleEdgeCardinality={handleCycleEdgeCardinality}
             fitRequestId={fitRequestId}
+            readOnly={isDerivedMode}
           />
 
           {showSql && mode === MODES.PHYSICAL && (
@@ -772,6 +815,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
             updateNode={updateNode}
             updateEdge={updateEdge}
             deleteSelected={deleteSelected}
+            readOnly={isDerivedMode}
           />
         </div>
       </ReactFlowProvider>

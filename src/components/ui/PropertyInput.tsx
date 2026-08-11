@@ -5,6 +5,7 @@ type PropertyInputProps = {
   type?: 'text' | 'select';
   options?: { value: string; label: string }[];
   placeholder?: string;
+  disabled?: boolean;
 };
 
 export const PropertyInput = ({
@@ -14,6 +15,7 @@ export const PropertyInput = ({
   type = 'text',
   options = [],
   placeholder = '',
+  disabled = false,
 }: PropertyInputProps) => (
   <div className="mb-4">
     <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
@@ -23,8 +25,9 @@ export const PropertyInput = ({
       <div className="relative">
         <select
           value={value ?? ''}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700"
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -37,9 +40,10 @@ export const PropertyInput = ({
       <input
         type={type}
         value={value ?? ''}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 placeholder-slate-400"
+        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 placeholder-slate-400 disabled:opacity-60 disabled:cursor-not-allowed"
       />
     )}
   </div>

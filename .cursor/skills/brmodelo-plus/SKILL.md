@@ -35,7 +35,7 @@ src/
   App.tsx                 # roteamento dashboard ↔ editor
   config/                 # constantes de UI, LOCAL_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # utils puros (SQL, localStorage, projectFile, fileTransfer, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
+  lib/                    # utils puros (SQL, localStorage, projectFile, fileTransfer, deriveRelational, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
   services/               # persistência local (projects + rooms)
   hooks/                  # useAuth (local), useProjects
   components/
@@ -104,8 +104,20 @@ Centros geométricos: `getNodeCenter` em `lib/nodeGeometry.ts`.
 No modo conceitual: entidades, relacionamentos, atributos na notação **Heuser**
 (círculo oco sob o dono, haste vertical a partir da base, rótulo à direita;
 chave = círculo preenchido + rótulo sublinhado; derivado = tracejado; multivalorado = círculo duplo).
-Nos modos lógico/físico: tabelas + colunas (PK/FK).  
-SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
+Nos modos lógico/físico: tabelas + colunas (PK/FK) **derivadas automaticamente** do conceitual.  
+SQL DDL: `src/lib/sql.ts` a partir de nós `table` do físico.
+
+### Derivação conceitual → lógico/físico
+
+`lib/deriveRelational.ts` (`deriveRelationalFromConceptual` / `syncDerivedDiagrams`):
+
+- Entidade → tabela; atributo (exceto derivado) → coluna; `key` → PK; sem chave → `id INTEGER`
+- Multivalorado → tabela auxiliar com FK
+- Relacionamento 1:N → FK no lado N; 1:1 → FK em um lado; N:N / n-ário / sem cardinalidade clara → tabela associativa
+- Atributos do relacionamento → colunas na tabela que recebe a FK / associativa
+- Lógico e físico recebem a **mesma** derivação; SQL espelha o físico
+- Fonte de verdade: só o **conceitual**. Persist/load/troca de modo regeneram lógico/físico
+- UI: modos derivados em somente leitura estrutural (toolbar, canvas, propriedades)
 
 ### Editor — comportamentos atuais
 

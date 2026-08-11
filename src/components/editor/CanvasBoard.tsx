@@ -49,6 +49,8 @@ type CanvasBoardProps = {
   onInlineLabelTab?: (id: string) => void;
   onCycleEdgeCardinality?: (edgeId: string, side: CardinalitySide) => void;
   fitRequestId?: number;
+  /** Modos derivados: pan/zoom/seleção sem editar. */
+  readOnly?: boolean;
 };
 
 const FitController = ({ fitRequestId }: { fitRequestId: number }) => {
@@ -78,20 +80,24 @@ export const CanvasBoard = ({
   onInlineLabelTab,
   onCycleEdgeCardinality,
   fitRequestId = 0,
+  readOnly = false,
 }: CanvasBoardProps) => {
   const { screenToFlowPosition } = useReactFlow();
 
   const contextValue = useMemo(
     () => ({
-      editingLabelId,
+      editingLabelId: readOnly ? null : editingLabelId,
       onInlineLabelChange: onInlineLabelChange ?? (() => undefined),
       onInlineLabelEnd: onInlineLabelEnd ?? (() => undefined),
       onInlineLabelSubmit: onInlineLabelSubmit ?? (() => undefined),
       onInlineLabelTab: onInlineLabelTab ?? (() => undefined),
-      onCycleEdgeCardinality: onCycleEdgeCardinality ?? (() => undefined),
-      connectable: tool === 'connection',
+      onCycleEdgeCardinality: readOnly
+        ? () => undefined
+        : (onCycleEdgeCardinality ?? (() => undefined)),
+      connectable: !readOnly && tool === 'connection',
     }),
     [
+      readOnly,
       editingLabelId,
       onInlineLabelChange,
       onInlineLabelEnd,
@@ -104,6 +110,7 @@ export const CanvasBoard = ({
 
   const handlePaneClick = useCallback(
     (e: ReactMouseEvent) => {
+      if (readOnly) return;
       if (editingLabelId && onInlineLabelEnd) {
         onInlineLabelEnd(editingLabelId);
       }
@@ -113,7 +120,14 @@ export const CanvasBoard = ({
         onPaneAddNode(pos);
       }
     },
-    [editingLabelId, onInlineLabelEnd, tool, screenToFlowPosition, onPaneAddNode],
+    [
+      readOnly,
+      editingLabelId,
+      onInlineLabelEnd,
+      tool,
+      screenToFlowPosition,
+      onPaneAddNode,
+    ],
   );
 
   const isDuplicate = useCallback(
@@ -147,8 +161,9 @@ export const CanvasBoard = ({
   );
 
   const isPlacementTool =
-    tool === 'entity' || tool === 'relationship' || tool === 'table';
-  const isConnectionTool = tool === 'connection';
+    !readOnly &&
+    (tool === 'entity' || tool === 'relationship' || tool === 'table');
+  const isConnectionTool = !readOnly && tool === 'connection';
 
   return (
     <DiagramFlowProvider value={contextValue}>
@@ -169,16 +184,16 @@ export const CanvasBoard = ({
           isValidConnection={isValidConnection}
           connectionMode={ConnectionMode.Loose}
           connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
-          nodesDraggable={tool === 'select'}
+          nodesDraggable={!readOnly && tool === 'select'}
           nodesConnectable={isConnectionTool}
-          elementsSelectable={tool === 'select'}
-          panOnDrag={tool === 'select' ? true : [1, 2]}
+          elementsSelectable={tool === 'select' || readOnly}
+          panOnDrag={tool === 'select' || readOnly ? true : [1, 2]}
           panOnScroll={false}
           zoomOnScroll
           zoomOnPinch
           selectionKeyCode="Shift"
           multiSelectionKeyCode="Shift"
-          deleteKeyCode={['Backspace', 'Delete']}
+          deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
           minZoom={0.1}
           maxZoom={3}
           proOptions={{ hideAttribution: true }}

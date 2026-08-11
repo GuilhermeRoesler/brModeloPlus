@@ -31,6 +31,7 @@ type PropertiesPanelProps = {
   updateNode: (id: string, changes: Partial<ErNodeData>) => void;
   updateEdge: (id: string, changes: Partial<NonNullable<ErEdge['data']>>) => void;
   deleteSelected: (idOverride?: string | null) => void;
+  readOnly?: boolean;
 };
 
 export const PropertiesPanel = ({
@@ -40,6 +41,7 @@ export const PropertiesPanel = ({
   updateNode,
   updateEdge,
   deleteSelected,
+  readOnly = false,
 }: PropertiesPanelProps) => {
   if (selectedIds.length !== 1) {
     if (selectedIds.length > 1) {
@@ -50,13 +52,15 @@ export const PropertiesPanel = ({
           </div>
           <h3 className="text-slate-800 font-bold mb-1">{selectedIds.length} Itens Selecionados</h3>
           <p className="text-slate-500 text-xs mb-6">Propriedades em massa indisponíveis.</p>
-          <button
-            type="button"
-            onClick={() => deleteSelected()}
-            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
-          >
-            <Trash2 size={16} /> Excluir Todos
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => deleteSelected()}
+              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={16} /> Excluir Todos
+            </button>
+          )}
         </div>
       );
     }
@@ -84,10 +88,17 @@ export const PropertiesPanel = ({
             type="button"
             onClick={() => deleteSelected(null)}
             className="text-slate-400 hover:text-slate-600"
+            title="Fechar seleção"
           >
             <X size={20} />
           </button>
         </div>
+
+        {readOnly && (
+          <p className="mb-4 text-[11px] leading-relaxed text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+            Visão derivada do conceitual — edite no modo conceitual para atualizar.
+          </p>
+        )}
 
         {selectedNode && (
           <div className="space-y-6">
@@ -109,6 +120,7 @@ export const PropertiesPanel = ({
             <PropertyInput
               label="Nome / Rótulo"
               value={selectedNode.data.label}
+              disabled={readOnly}
               onChange={(val) => handleUpdate('label', val)}
             />
 
@@ -117,9 +129,10 @@ export const PropertiesPanel = ({
                 <span className="text-sm font-medium text-slate-700">Entidade Fraca?</span>
                 <input
                   type="checkbox"
+                  disabled={readOnly}
                   checked={selectedNode.data.isWeak || false}
                   onChange={(e) => handleUpdate('isWeak', e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
             )}
@@ -128,6 +141,7 @@ export const PropertiesPanel = ({
               <PropertyInput
                 label="Tipo"
                 type="select"
+                disabled={readOnly}
                 value={selectedNode.data.attrType}
                 onChange={(val) => handleUpdate('attrType', val)}
                 options={[
@@ -145,18 +159,20 @@ export const PropertiesPanel = ({
                   <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Colunas
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleUpdateTableCol([
-                        ...(selectedNode.data.columns || []),
-                        { id: generateId(), name: 'nova', type: 'INT', isPk: false },
-                      ])
-                    }
-                    className="text-indigo-600 hover:bg-indigo-50 p-1 rounded"
-                  >
-                    <Plus size={16} />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdateTableCol([
+                          ...(selectedNode.data.columns || []),
+                          { id: generateId(), name: 'nova', type: 'INT', isPk: false },
+                        ])
+                      }
+                      className="text-indigo-600 hover:bg-indigo-50 p-1 rounded"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-2">
                   {selectedNode.data.columns?.map((col) => (
@@ -167,6 +183,7 @@ export const PropertiesPanel = ({
                       <div className="flex gap-2">
                         <input
                           value={col.name}
+                          disabled={readOnly}
                           onChange={(e) =>
                             handleUpdateTableCol(
                               (selectedNode.data.columns || []).map((c) =>
@@ -174,23 +191,26 @@ export const PropertiesPanel = ({
                               ),
                             )
                           }
-                          className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs"
+                          className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs disabled:opacity-60"
                         />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleUpdateTableCol(
-                              (selectedNode.data.columns || []).filter((c) => c.id !== col.id),
-                            )
-                          }
-                          className="text-red-400 hover:text-red-600"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateTableCol(
+                                (selectedNode.data.columns || []).filter((c) => c.id !== col.id),
+                              )
+                            }
+                            className="text-red-400 hover:text-red-600"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                       <div className="flex gap-2 items-center">
                         <input
                           value={col.type}
+                          disabled={readOnly}
                           onChange={(e) =>
                             handleUpdateTableCol(
                               (selectedNode.data.columns || []).map((c) =>
@@ -198,11 +218,12 @@ export const PropertiesPanel = ({
                               ),
                             )
                           }
-                          className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-500"
+                          className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-500 disabled:opacity-60"
                         />
                         <label className="flex items-center gap-1">
                           <input
                             type="checkbox"
+                            disabled={readOnly}
                             checked={Boolean(col.isPk)}
                             onChange={(e) =>
                               handleUpdateTableCol(
@@ -217,6 +238,7 @@ export const PropertiesPanel = ({
                         <label className="flex items-center gap-1">
                           <input
                             type="checkbox"
+                            disabled={readOnly}
                             checked={Boolean(col.isFk)}
                             onChange={(e) =>
                               handleUpdateTableCol(
@@ -261,6 +283,7 @@ export const PropertiesPanel = ({
                   <PropertyInput
                     label={`Cardinalidade (${entity?.data.label || 'entidade'})`}
                     type="select"
+                    disabled={readOnly}
                     value={selectedEdge.data?.[field] ?? ''}
                     onChange={(val) =>
                       updateEdge(selectedId, { [field]: val })
@@ -277,6 +300,7 @@ export const PropertiesPanel = ({
                   <PropertyInput
                     label={`Cardinalidade (${sourceNode?.data.label || 'origem'})`}
                     type="select"
+                    disabled={readOnly}
                     value={selectedEdge.data?.cardinalitySource ?? ''}
                     onChange={(val) =>
                       updateEdge(selectedId, { cardinalitySource: val })
@@ -286,6 +310,7 @@ export const PropertiesPanel = ({
                   <PropertyInput
                     label={`Cardinalidade (${targetNode?.data.label || 'destino'})`}
                     type="select"
+                    disabled={readOnly}
                     value={selectedEdge.data?.cardinalityTarget ?? ''}
                     onChange={(val) =>
                       updateEdge(selectedId, { cardinalityTarget: val })
@@ -295,23 +320,27 @@ export const PropertiesPanel = ({
                 </>
               );
             })()}
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Dica: no canvas, clique no chip <span className="font-semibold">?</span> da
-              aresta para alternar 1, N, (0,1), (1,1), (0,n), (1,n).
-            </p>
+            {!readOnly && (
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Dica: no canvas, clique no chip <span className="font-semibold">?</span> da
+                aresta para alternar 1, N, (0,1), (1,1), (0,n), (1,n).
+              </p>
+            )}
           </div>
         )}
       </div>
 
-      <div className="p-6 border-t border-slate-100 bg-slate-50">
-        <button
-          type="button"
-          onClick={() => deleteSelected()}
-          className="w-full py-3 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm shadow-sm"
-        >
-          <Trash2 size={18} /> Excluir Selecionado
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="p-6 border-t border-slate-100 bg-slate-50">
+          <button
+            type="button"
+            onClick={() => deleteSelected()}
+            className="w-full py-3 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm shadow-sm"
+          >
+            <Trash2 size={18} /> Excluir Selecionado
+          </button>
+        </div>
+      )}
     </div>
   );
 };
