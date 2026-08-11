@@ -8,10 +8,10 @@
 
 ## Funcionalidades
 
-- **3 modos de modelagem** — cada um com **canvas próprio**; lógico e físico são **derivados automaticamente** do conceitual (somente leitura estrutural)
+- **3 modos de modelagem** — conceitual e lógico com canvas próprios; físico é editor SQL (read-only) derivado do lógico
   - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (haste vertical sob o dono, círculo + rótulo à direita; chave / derivado / multivalorado).
-  - **Lógico:** tabelas/FKs geradas a partir do conceitual.
-  - **Físico:** mesma derivação + geração de SQL DDL.
+  - **Lógico:** tabelas/FKs geradas a partir do conceitual (somente leitura estrutural).
+  - **Físico:** SQL DDL gerado automaticamente (textarea somente leitura + copiar).
 - **Editor**
   - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto.
   - Painel de propriedades.
@@ -20,7 +20,7 @@
   - **Cardinalidade:** chips nas arestas (clique para ciclar 1, N, (0,1)…); em entidade↔relacionamento o valor fica no lado da entidade. Também editável no painel ao selecionar a aresta.
   - **Enter** (modo conceitual): cria atributo ligado abaixo do dono com edição inline do nome.
   - **Tab** (modo conceitual): com entidade selecionada, cria relacionamento já conectado à direita (edição inline); Tab de novo cria a próxima entidade interligada.
-- **Geração de SQL:** `CREATE TABLE` a partir do modelo físico.
+- **Geração de SQL:** modo físico exibe `CREATE TABLE` completo (mesmo conteúdo da antiga aba SQL).
 - **Import / export JSON:** baixar ou carregar o projeto (conceitual + lógico + físico). No dashboard, importar cria um projeto novo; no editor, importar substitui a sala atual.
 - **Projetos locais:** criar, listar e excluir diagramas (`localStorage`).
 

@@ -58,8 +58,8 @@ import {
 } from '../../types';
 import { CanvasBoard } from './CanvasBoard';
 import { EditorHeader } from './EditorHeader';
+import { PhysicalSqlView } from './PhysicalSqlView';
 import { PropertiesPanel } from './PropertiesPanel';
-import { SQLPanel } from './SQLPanel';
 import { Toolbar } from './Toolbar';
 
 type EditorScreenProps = {
@@ -117,7 +117,6 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const [nodes, setNodes] = useNodesState<ErNode>([]);
   const [edges, setEdges] = useEdgesState<ErEdge>([]);
   const [tool, setTool] = useState<Tool>('select');
-  const [showSql, setShowSql] = useState(false);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [fitRequestId, setFitRequestId] = useState(0);
   const [roomReady, setRoomReady] = useState(false);
@@ -177,7 +176,6 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       setTool('select');
       setEditingLabelId(null);
       editingLabelIdRef.current = null;
-      setShowSql(false);
       if (shouldPersist) {
         void saveRoom(roomId, {
           diagrams,
@@ -250,7 +248,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   };
 
   const requestFit = () => setFitRequestId((n) => n + 1);
-  const isDerivedMode = mode !== MODES.CONCEPTUAL;
+  const isLogicalReadOnly = mode === MODES.LOGICAL;
 
   const commitDiagram = async (
     nextNodes: ErNode[],
@@ -737,14 +735,13 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     setTool('select');
     setEditingLabelId(null);
     editingLabelIdRef.current = null;
-    if (m !== MODES.PHYSICAL) setShowSql(false);
 
     void saveRoom(roomId, {
       diagrams,
       mode: m,
       version: ROOM_VERSION,
     });
-    requestFit();
+    if (m !== MODES.PHYSICAL) requestFit();
   };
 
   const handleAutoLayout = () => {
@@ -766,59 +763,57 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
         mode={mode}
         onBack={onBack}
         onChangeMode={handleChangeMode}
-        showSql={showSql}
-        onToggleSql={() => setShowSql((v) => !v)}
         onExportJson={handleExportJson}
         onImportJson={(file) => {
           void handleImportJson(file);
         }}
       />
 
-      <ReactFlowProvider key={mode}>
-        <div className="flex-1 flex relative overflow-hidden">
-          <Toolbar
-            tool={tool}
-            setTool={setTool}
-            currentMode={mode}
-            onAutoLayout={handleAutoLayout}
-            derivedReadOnly={isDerivedMode}
-          />
+      {mode === MODES.PHYSICAL ? (
+        <PhysicalSqlView nodes={nodes} />
+      ) : (
+        <ReactFlowProvider key={mode}>
+          <div className="flex-1 flex relative overflow-hidden">
+            <Toolbar
+              tool={tool}
+              setTool={setTool}
+              currentMode={mode}
+              onAutoLayout={handleAutoLayout}
+              derivedReadOnly={isLogicalReadOnly}
+            />
 
-          <CanvasBoard
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            tool={isDerivedMode ? 'select' : tool}
-            onConnect={handleConnect}
-            onPaneAddNode={addNodeAt}
-            editingLabelId={isDerivedMode ? null : editingLabelId}
-            onInlineLabelChange={handleInlineLabelChange}
-            onInlineLabelEnd={handleInlineLabelEnd}
-            onInlineLabelSubmit={handleInlineLabelSubmit}
-            onInlineLabelTab={handleInlineLabelTab}
-            onCycleEdgeCardinality={handleCycleEdgeCardinality}
-            fitRequestId={fitRequestId}
-            readOnly={isDerivedMode}
-          />
+            <CanvasBoard
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={handleEdgesChange}
+              tool={isLogicalReadOnly ? 'select' : tool}
+              onConnect={handleConnect}
+              onPaneAddNode={addNodeAt}
+              editingLabelId={isLogicalReadOnly ? null : editingLabelId}
+              onInlineLabelChange={handleInlineLabelChange}
+              onInlineLabelEnd={handleInlineLabelEnd}
+              onInlineLabelSubmit={handleInlineLabelSubmit}
+              onInlineLabelTab={handleInlineLabelTab}
+              onCycleEdgeCardinality={handleCycleEdgeCardinality}
+              fitRequestId={fitRequestId}
+              readOnly={isLogicalReadOnly}
+            />
 
-          {showSql && mode === MODES.PHYSICAL && (
-            <SQLPanel nodes={nodes} onClose={() => setShowSql(false)} />
-          )}
+            <ZoomControls />
 
-          <ZoomControls />
-
-          <PropertiesPanel
-            selectedIds={selectedIds}
-            nodes={nodes}
-            edges={edges}
-            updateNode={updateNode}
-            updateEdge={updateEdge}
-            deleteSelected={deleteSelected}
-            readOnly={isDerivedMode}
-          />
-        </div>
-      </ReactFlowProvider>
+            <PropertiesPanel
+              selectedIds={selectedIds}
+              nodes={nodes}
+              edges={edges}
+              updateNode={updateNode}
+              updateEdge={updateEdge}
+              deleteSelected={deleteSelected}
+              readOnly={isLogicalReadOnly}
+            />
+          </div>
+        </ReactFlowProvider>
+      )}
     </div>
   );
 };

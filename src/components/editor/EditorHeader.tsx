@@ -1,13 +1,11 @@
 import { useRef, type ChangeEvent } from 'react';
-import { ArrowLeft, Code, Download, Grid, Upload } from 'lucide-react';
+import { ArrowLeft, Download, Grid, Upload } from 'lucide-react';
 import { MODES, type Mode } from '../../types';
 
 type EditorHeaderProps = {
   mode: Mode;
   onBack: () => void;
   onChangeMode: (mode: Mode) => void;
-  showSql: boolean;
-  onToggleSql: () => void;
   onExportJson: () => void;
   onImportJson: (file: File) => void;
 };
@@ -16,8 +14,6 @@ export const EditorHeader = ({
   mode,
   onBack,
   onChangeMode,
-  showSql,
-  onToggleSql,
   onExportJson,
   onImportJson,
 }: EditorHeaderProps) => {
@@ -102,19 +98,6 @@ export const EditorHeader = ({
         >
           <Download size={14} /> Exportar
         </button>
-        {mode === MODES.PHYSICAL && (
-          <button
-            type="button"
-            onClick={onToggleSql}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-              showSql
-                ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <Code size={14} /> SQL
-          </button>
-        )}
         <span
           className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1.5 rounded border border-amber-100 uppercase tracking-wide"
           title="Persistência local (localStorage)"

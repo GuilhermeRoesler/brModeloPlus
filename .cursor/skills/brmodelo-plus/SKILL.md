@@ -73,7 +73,7 @@ Documento de sala (`RoomData`, `ROOM_VERSION = 3`):
 }
 ```
 
-Cada modo tem **canvas e diagrama próprios**. Trocar de modo no header salva o diagrama atual e carrega o do destino (`ReactFlowProvider key={mode}`).
+Cada modo tem persistência própria em `diagrams`. Conceitual e lógico usam canvas React Flow; o físico é uma visão SQL. Trocar de modo no header salva o diagrama atual e carrega o destino (`ReactFlowProvider key={mode}` nos canvas).
 
 `normalizeRoomData` em `lib/localStorage.ts` migra documentos v2 (um único `nodes`/`edges`) para o modo que estava salvo; salas novas já nascem com três diagramas vazios.
 
@@ -104,10 +104,10 @@ Centros geométricos: `getNodeCenter` em `lib/nodeGeometry.ts`.
 No modo conceitual: entidades, relacionamentos, atributos na notação **Heuser**
 (círculo oco sob o dono, haste vertical a partir da base, rótulo à direita;
 chave = círculo preenchido + rótulo sublinhado; derivado = tracejado; multivalorado = círculo duplo).
-Nos modos lógico/físico: tabelas + colunas (PK/FK) **derivadas automaticamente** do conceitual.  
-SQL DDL: `src/lib/sql.ts` a partir de nós `table` do físico.
+Nos modos lógico: tabelas + colunas (PK/FK) **derivadas automaticamente** do conceitual.  
+Modo físico: **editor de texto SQL** (read-only) com o DDL gerado a partir das tabelas do lógico (`lib/sql.ts`).
 
-### Derivação conceitual → lógico/físico
+### Derivação conceitual → lógico (/ SQL físico)
 
 `lib/deriveRelational.ts` (`deriveRelationalFromConceptual` / `syncDerivedDiagrams`):
 
@@ -115,16 +115,16 @@ SQL DDL: `src/lib/sql.ts` a partir de nós `table` do físico.
 - Multivalorado → tabela auxiliar com FK
 - Relacionamento 1:N → FK no lado N; 1:1 → FK em um lado; N:N / n-ário / sem cardinalidade clara → tabela associativa
 - Atributos do relacionamento → colunas na tabela que recebe a FK / associativa
-- Lógico e físico recebem a **mesma** derivação; SQL espelha o físico
-- Fonte de verdade: só o **conceitual**. Persist/load/troca de modo regeneram lógico/físico
-- UI: modos derivados em somente leitura estrutural (toolbar, canvas, propriedades)
+- Lógico = canvas de tabelas derivado; físico = visão SQL do mesmo modelo (não é canvas)
+- Fonte de verdade: só o **conceitual**. Persist/load/troca de modo regeneram o lógico (e o SQL do físico)
+- UI: lógico em somente leitura estrutural; físico é `PhysicalSqlView` (textarea read-only + copiar)
 
 ### Editor — comportamentos atuais
 
-Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` por modo + `useNodesState` / `useEdgesState` do diagrama ativo); canvas em `CanvasBoard.tsx` (wrapper fino do `<ReactFlow>`).
+Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` nos modos canvas + `useNodesState` / `useEdgesState`); canvas em `CanvasBoard.tsx`; físico em `PhysicalSqlView.tsx`.
 
-- **Três canvas** — conceitual, lógico e físico com `nodes`/`edges` independentes; o estado ativo espelha `diagrams[mode]`
-- **Seleção / pan / zoom / box select / Delete·Backspace** — nativos do React Flow; scroll = zoom; seleção lida de `node.selected` / `edge.selected`
+- **Conceitual + lógico** — canvas React Flow; físico é editor SQL full-bleed (sem toolbar/canvas)
+- **Seleção / pan / zoom / box select / Delete·Backspace** — nativos do React Flow (conceitual/lógico); scroll = zoom; seleção lida de `node.selected` / `edge.selected`
 - **Drag estrutural** — ao mover entidade/relacionamento, atributos ligados (incl. compostos) acompanham o mesmo delta (`followStructuralDrags`); ids já no lote de drag não são deslocados de novo (multi-seleção)
 - **Conexões** — tool `connection`: handle→handle (`ConnectionMode.Loose`)
 - **Cardinalidade** — chips nas arestas estruturais (`CardinalityEdge`), centro do chip **sobre a reta handle→handle** a distância fixa da borda (`cardinalityLabelPoint`); clique cicla `1` / `n` / `(0,1)` / `(1,1)` / `(0,n)` / `(1,n)`; em entidade↔relacionamento (Heuser) o chip fica só no lado da entidade; painel espelha com select (`lib/cardinality.ts`)
