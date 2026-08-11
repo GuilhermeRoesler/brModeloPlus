@@ -27,9 +27,31 @@ type CanvasBoardProps = {
   cursors: RemoteCursor[];
   currentUserId?: string;
   selectionBox: SelectionBox | null;
+  editingLabelId?: string | null;
+  onInlineLabelChange?: (id: string, label: string) => void;
+  onInlineLabelEnd?: (id: string) => void;
+  onInlineLabelSubmit?: (id: string) => void;
 };
 
-const renderNode = (node: DiagramNode, isSelected: boolean) => {
+type InlineEditHandlers = {
+  isEditing: boolean;
+  onChange: (label: string) => void;
+  onEnd: () => void;
+  onSubmit: () => void;
+};
+
+const STRUCTURAL_TYPES = new Set<string>([
+  NODE_TYPES.ENTITY,
+  NODE_TYPES.RELATIONSHIP,
+  NODE_TYPES.TABLE,
+]);
+
+const renderNode = (
+  node: DiagramNode,
+  isSelected: boolean,
+  editing?: InlineEditHandlers,
+  labelOnLeft = false,
+) => {
   const strokeClass = isSelected ? THEME.selection : 'stroke-slate-800 stroke-2';
   const fillClass = isSelected ? THEME.selectionFill : 'fill-white';
   const filter = isSelected ? 'url(#glow)' : 'drop-shadow(0px 2px 3px rgba(0,0,0,0.1))';
@@ -101,14 +123,18 @@ const renderNode = (node: DiagramNode, isSelected: boolean) => {
           ? 'fill-indigo-500'
           : 'fill-slate-800'
         : fillClass;
-      const labelWidth = Math.max(48, node.label.length * 7 + 8);
+      const displayLabel = node.label || 'Atributo';
+      const labelWidth = Math.max(48, displayLabel.length * 7 + 8);
+      const editWidth = Math.max(96, labelWidth + 24);
+      const textW = editing?.isEditing ? editWidth : labelWidth;
+      const hitX = labelOnLeft ? -r - 4 - textW : -r - 4;
 
       return (
         <g transform={`translate(${node.x}, ${node.y})`}>
           <rect
-            x={-r - 4}
+            x={hitX}
             y={-r - 6}
-            width={r + 8 + labelWidth}
+            width={r + 8 + textW}
             height={r * 2 + 12}
             fill="transparent"
           />
@@ -132,16 +158,51 @@ const renderNode = (node: DiagramNode, isSelected: boolean) => {
               strokeDasharray={isDerived ? '3 2' : undefined}
             />
           )}
-          <text
-            x={r + 6}
-            y="0"
-            dy="0.35em"
-            className={`text-xs select-none pointer-events-none ${
-              isKey ? 'font-bold fill-slate-900' : 'fill-slate-800'
-            }`}
-          >
-            {node.label}
-          </text>
+          {editing?.isEditing ? (
+            <foreignObject
+              x={labelOnLeft ? -r - 4 - editWidth : r + 4}
+              y={-14}
+              width={editWidth}
+              height={28}
+            >
+              <input
+                data-inline-label-edit=""
+                autoFocus
+                value={node.label}
+                placeholder="Atributo"
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => editing.onChange(e.target.value)}
+                onBlur={() => editing.onEnd()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    editing.onSubmit();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    editing.onEnd();
+                  }
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className={`w-full h-7 px-1.5 text-xs font-medium text-slate-800 bg-white border border-indigo-400 rounded shadow-sm outline-none focus:ring-2 focus:ring-indigo-400 ${
+                  labelOnLeft ? 'text-right' : 'text-left'
+                }`}
+              />
+            </foreignObject>
+          ) : (
+            <text
+              x={labelOnLeft ? -r - 6 : r + 6}
+              y="0"
+              dy="0.35em"
+              textAnchor={labelOnLeft ? 'end' : 'start'}
+              className={`text-xs select-none pointer-events-none ${
+                isKey ? 'font-bold fill-slate-900' : 'fill-slate-800'
+              }`}
+            >
+              {displayLabel}
+            </text>
+          )}
         </g>
       );
     }
@@ -201,6 +262,10 @@ export const CanvasBoard = ({
   cursors,
   currentUserId,
   selectionBox,
+  editingLabelId = null,
+  onInlineLabelChange,
+  onInlineLabelEnd,
+  onInlineLabelSubmit,
 }: CanvasBoardProps) => {
   const tempSource = tempConnectionStart
     ? nodes.find((n) => n.id === tempConnectionStart)
@@ -328,15 +393,45 @@ export const CanvasBoard = ({
             />
           )}
 
-          {nodes.map((node) => (
-            <g
-              key={node.id}
-              onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
-              className="pointer-events-auto cursor-move"
-            >
-              {renderNode(node, selectedIds.includes(node.id))}
-            </g>
-          ))}
+          {nodes.map((node) => {
+            const isEditing = editingLabelId === node.id;
+            let labelOnLeft = false;
+            if (node.type === NODE_TYPES.ATTRIBUTE) {
+              const owner = connections
+                .map((c) => {
+                  const other =
+                    c.source === node.id
+                      ? c.target
+                      : c.target === node.id
+                        ? c.source
+                        : null;
+                  return other ? nodes.find((n) => n.id === other) : undefined;
+                })
+                .find((n) => n && STRUCTURAL_TYPES.has(n.type));
+              if (owner) labelOnLeft = node.x < owner.x;
+            }
+            return (
+              <g
+                key={node.id}
+                onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                className={`pointer-events-auto ${isEditing ? 'cursor-text' : 'cursor-move'}`}
+              >
+                {renderNode(
+                  node,
+                  selectedIds.includes(node.id),
+                  isEditing && onInlineLabelChange && onInlineLabelEnd && onInlineLabelSubmit
+                    ? {
+                        isEditing: true,
+                        onChange: (label) => onInlineLabelChange(node.id, label),
+                        onEnd: () => onInlineLabelEnd(node.id),
+                        onSubmit: () => onInlineLabelSubmit(node.id),
+                      }
+                    : undefined,
+                  labelOnLeft,
+                )}
+              </g>
+            );
+          })}
 
           {cursors.map(
             (cursor) =>

@@ -41,6 +41,7 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
   const [showSql, setShowSql] = useState(false);
   const [cursors, setCursors] = useState<RemoteCursor[]>([]);
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
 
   const tempConnectionStart = useRef<string | null>(null);
   const isDraggingCanvas = useRef(false);
@@ -54,6 +55,8 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
   const nodesRef = useRef(nodes);
   const connectionsRef = useRef(connections);
   const modeRef = useRef(mode);
+  const selectedIdsRef = useRef(selectedIds);
+  const editingLabelIdRef = useRef(editingLabelId);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -64,6 +67,12 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+  useEffect(() => {
+    selectedIdsRef.current = selectedIds;
+  }, [selectedIds]);
+  useEffect(() => {
+    editingLabelIdRef.current = editingLabelId;
+  }, [editingLabelId]);
 
   useEffect(() => {
     const unsub = subscribeToRoom(roomId, {
@@ -118,22 +127,24 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     }
   };
 
-  /** Aplica auto layout, atualiza estado e persiste. */
+  /** Aplica auto layout (opcional), atualiza estado e persiste. */
   const commitDiagram = (
     nextNodes: DiagramNode[],
     nextConns: Connection[] = connectionsRef.current,
-    options: { fit?: boolean } = {},
+    options: { fit?: boolean; layout?: boolean } = {},
   ) => {
-    const { fit = true } = options;
-    const laidOut =
-      nextNodes.length > 0 ? autoLayout(nextNodes, nextConns) : nextNodes;
-    setNodes(laidOut);
+    const { fit = true, layout = true } = options;
+    const next =
+      layout && nextNodes.length > 0
+        ? autoLayout(nextNodes, nextConns)
+        : nextNodes;
+    setNodes(next);
     setConnections(nextConns);
-    nodesRef.current = laidOut;
+    nodesRef.current = next;
     connectionsRef.current = nextConns;
-    if (fit) fitNodesInView(laidOut);
-    void persist(laidOut, nextConns);
-    return laidOut;
+    if (fit) fitNodesInView(next);
+    void persist(next, nextConns);
+    return next;
   };
 
   const getMousePos = (e: MouseEvent) => {
@@ -189,6 +200,167 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     setSelectedIds([newNode.id]);
   };
 
+  const findAttributeOwnerId = (attrId: string) => {
+    const nodesList = nodesRef.current;
+    const conns = connectionsRef.current;
+    for (const c of conns) {
+      const other =
+        c.source === attrId ? c.target : c.target === attrId ? c.source : null;
+      if (!other) continue;
+      const n = nodesList.find((x) => x.id === other);
+      if (
+        n &&
+        (n.type === NODE_TYPES.ENTITY || n.type === NODE_TYPES.RELATIONSHIP)
+      ) {
+        return other;
+      }
+    }
+    return null;
+  };
+
+  const linkedAttributesOf = (ownerId: string) => {
+    const nodesList = nodesRef.current;
+    const conns = connectionsRef.current;
+    const attrs: DiagramNode[] = [];
+    for (const c of conns) {
+      const other =
+        c.source === ownerId ? c.target : c.target === ownerId ? c.source : null;
+      if (!other) continue;
+      const n = nodesList.find((x) => x.id === other);
+      if (n?.type === NODE_TYPES.ATTRIBUTE) attrs.push(n);
+    }
+    return attrs;
+  };
+
+  /** Cria atributo ligado a entidade/relacionamento e entra em edição de nome. */
+  const createLinkedAttribute = (ownerId: string) => {
+    const owner = nodesRef.current.find((n) => n.id === ownerId);
+    if (!owner) return;
+    if (
+      owner.type !== NODE_TYPES.ENTITY &&
+      owner.type !== NODE_TYPES.RELATIONSHIP
+    ) {
+      return;
+    }
+
+    const siblings = linkedAttributesOf(ownerId);
+    const side: 1 | -1 =
+      siblings.length > 0 ? (siblings[0].x >= owner.x ? 1 : -1) : 1;
+    const y =
+      siblings.length === 0
+        ? owner.y
+        : Math.max(...siblings.map((s) => s.y)) + 32;
+
+    const newAttr: DiagramNode = {
+      id: generateId(),
+      x: owner.x + side * 110,
+      y,
+      type: NODE_TYPES.ATTRIBUTE,
+      label: '',
+      attrType: 'normal',
+    };
+    const newConn: Connection = {
+      id: generateId(),
+      source: ownerId,
+      target: newAttr.id,
+      cardinalitySource: '',
+      cardinalityTarget: '',
+    };
+
+    const nextNodes = [...nodesRef.current, newAttr];
+    const nextConns = [...connectionsRef.current, newConn];
+    commitDiagram(nextNodes, nextConns, { fit: false, layout: false });
+    setTool('select');
+    setSelectedIds([newAttr.id]);
+    editingLabelIdRef.current = newAttr.id;
+    setEditingLabelId(newAttr.id);
+  };
+
+  const resolveOwnerForEnter = (): string | null => {
+    const ids = selectedIdsRef.current;
+    if (ids.length !== 1) return null;
+    const selected = nodesRef.current.find((n) => n.id === ids[0]);
+    if (!selected) return null;
+    if (
+      selected.type === NODE_TYPES.ENTITY ||
+      selected.type === NODE_TYPES.RELATIONSHIP
+    ) {
+      return selected.id;
+    }
+    if (selected.type === NODE_TYPES.ATTRIBUTE) {
+      return findAttributeOwnerId(selected.id);
+    }
+    return null;
+  };
+
+  const finalizeLabelIfEmpty = (id: string) => {
+    const node = nodesRef.current.find((n) => n.id === id);
+    if (!node || node.label.trim()) return;
+    const updated = nodesRef.current.map((n) =>
+      n.id === id ? { ...n, label: 'Atributo' } : n,
+    );
+    nodesRef.current = updated;
+    setNodes(updated);
+  };
+
+  const handleInlineLabelChange = (id: string, label: string) => {
+    const updated = nodesRef.current.map((n) =>
+      n.id === id ? { ...n, label } : n,
+    );
+    nodesRef.current = updated;
+    setNodes(updated);
+  };
+
+  const handleInlineLabelEnd = (id: string) => {
+    if (editingLabelIdRef.current !== id) return;
+    finalizeLabelIfEmpty(id);
+    editingLabelIdRef.current = null;
+    setEditingLabelId(null);
+    void persist(nodesRef.current, connectionsRef.current);
+  };
+
+  const handleInlineLabelSubmit = (id: string) => {
+    finalizeLabelIfEmpty(id);
+    void persist(nodesRef.current, connectionsRef.current);
+    const ownerId = findAttributeOwnerId(id);
+    if (ownerId) createLinkedAttribute(ownerId);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (modeRef.current !== MODES.CONCEPTUAL) return;
+
+      if (e.key === 'Escape' && editingLabelIdRef.current) {
+        handleInlineLabelEnd(editingLabelIdRef.current);
+        return;
+      }
+
+      if (e.key !== 'Enter') return;
+
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.('[data-inline-label-edit]')) return;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const ownerId = resolveOwnerForEnter();
+      if (!ownerId) return;
+      e.preventDefault();
+      createLinkedAttribute(ownerId);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // Handlers usam refs; listener estável no mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleCanvasMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
 
@@ -198,6 +370,10 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
       target.id === 'grid-bg' || target.tagName === 'svg' || target.tagName === 'DIV';
 
     if (!isEmptyCanvas) return;
+
+    if (editingLabelIdRef.current) {
+      handleInlineLabelEnd(editingLabelIdRef.current);
+    }
 
     if (tool === 'select') {
       if (e.shiftKey) {
@@ -222,6 +398,10 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
 
   const handleNodeMouseDown = (e: MouseEvent, id: string, isConnection = false) => {
     e.stopPropagation();
+
+    if (editingLabelIdRef.current && editingLabelIdRef.current !== id) {
+      handleInlineLabelEnd(editingLabelIdRef.current);
+    }
 
     if (tool === 'connection') {
       if (!tempConnectionStart.current) {
@@ -406,6 +586,10 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
           cursors={cursors}
           currentUserId={user.uid}
           selectionBox={selectionBox}
+          editingLabelId={editingLabelId}
+          onInlineLabelChange={handleInlineLabelChange}
+          onInlineLabelEnd={handleInlineLabelEnd}
+          onInlineLabelSubmit={handleInlineLabelSubmit}
         />
 
         {showSql && mode === MODES.PHYSICAL && (
