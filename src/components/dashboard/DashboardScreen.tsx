@@ -1,11 +1,14 @@
-import { useState, type FormEvent, type MouseEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react';
 import {
   FolderOpen,
   FolderPlus,
   Grid,
   LayoutGrid,
   Trash2,
+  Upload,
 } from 'lucide-react';
+import { readFileAsText } from '../../lib/fileTransfer';
+import { parseProjectFileJson, ProjectFileError } from '../../lib/projectFile';
 import { useProjects } from '../../hooks/useProjects';
 import type { AppUser } from '../../types';
 
@@ -18,6 +21,8 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
   const { projects, loading, create, remove } = useProjects(user);
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,6 +35,30 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
     e.stopPropagation();
     if (confirm('Tem certeza que deseja excluir este projeto?')) {
       await remove(projectId);
+    }
+  };
+
+  const handleImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const text = await readFileAsText(file);
+      const parsed = parseProjectFileJson(text);
+      const fallbackName = file.name.replace(/\.brmodelo\.json$/i, '').replace(/\.json$/i, '');
+      const name = parsed.name?.trim() || fallbackName || 'Projeto importado';
+      const roomId = await create(name, parsed.room);
+      if (roomId) onOpenProject(roomId);
+    } catch (err) {
+      const message =
+        err instanceof ProjectFileError
+          ? err.message
+          : 'Não foi possível importar o arquivo.';
+      window.alert(message);
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -52,15 +81,35 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
 
       <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 gap-3 flex-wrap">
             <h2 className="text-2xl font-bold text-slate-800">Projetos Recentes</h2>
-            <button
-              type="button"
-              onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
-            >
-              <FolderPlus size={18} /> Novo Projeto
-            </button>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json,.json,.brmodelo.json"
+                className="hidden"
+                onChange={(e) => {
+                  void handleImportFile(e);
+                }}
+              />
+              <button
+                type="button"
+                disabled={importing}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-sm font-bold transition-all disabled:opacity-60"
+              >
+                <Upload size={18} />
+                {importing ? 'Importando…' : 'Importar JSON'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreating(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
+              >
+                <FolderPlus size={18} /> Novo Projeto
+              </button>
+            </div>
           </div>
 
           {isCreating && (
@@ -106,7 +155,9 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                 <FolderOpen size={32} />
               </div>
               <h3 className="text-lg font-bold text-slate-700">Nenhum projeto encontrado</h3>
-              <p className="text-slate-500">Crie seu primeiro diagrama para começar.</p>
+              <p className="text-slate-500">
+                Crie um diagrama ou importe um arquivo JSON.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

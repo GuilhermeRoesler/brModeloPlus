@@ -6,15 +6,19 @@ import {
   saveLocalRoom,
 } from '../lib/localStorage';
 import { generateId } from '../lib/utils';
-import type { AppUser, Project } from '../types';
+import type { AppUser, Project, RoomData } from '../types';
 
 export const listProjects = async (_user: AppUser): Promise<Project[]> => {
   return loadLocalProjects();
 };
 
+export const findProjectByRoomId = (roomId: string): Project | undefined =>
+  loadLocalProjects().find((p) => p.roomId === roomId || p.id === roomId);
+
 export const createProject = async (
   user: AppUser,
   name: string,
+  room: RoomData = createEmptyRoom(),
 ): Promise<string> => {
   const roomId = generateId();
   const projectData: Project = {
@@ -27,7 +31,7 @@ export const createProject = async (
 
   const next = [projectData, ...loadLocalProjects()];
   saveLocalProjects(next);
-  saveLocalRoom(roomId, createEmptyRoom());
+  saveLocalRoom(roomId, room);
   return roomId;
 };
 

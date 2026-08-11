@@ -32,8 +32,16 @@ import {
   positionRightOf,
 } from '../../lib/diagramFlow';
 import { createEmptyDiagrams } from '../../lib/localStorage';
+import { downloadTextFile, readFileAsText } from '../../lib/fileTransfer';
 import { topLeftFromCenter } from '../../lib/nodeGeometry';
+import {
+  parseProjectFileJson,
+  ProjectFileError,
+  serializeProjectFile,
+  suggestExportFilename,
+} from '../../lib/projectFile';
 import { generateId } from '../../lib/utils';
+import { findProjectByRoomId } from '../../services/projects';
 import {
   MODES,
   NODE_TYPES,
@@ -44,6 +52,7 @@ import {
   type ErNodeData,
   type Mode,
   type ModeDiagram,
+  type RoomData,
   type Tool,
 } from '../../types';
 import { CanvasBoard } from './CanvasBoard';
@@ -148,30 +157,88 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     [roomId],
   );
 
+  const applyRoomData = useCallback(
+    (data: RoomData, options: { persist?: boolean; fit?: boolean } = {}) => {
+      const { persist: shouldPersist = false, fit = false } = options;
+      diagramsRef.current = data.diagrams;
+      const active = data.diagrams[data.mode] ?? { nodes: [], edges: [] };
+      setMode(data.mode);
+      modeRef.current = data.mode;
+      setNodes(active.nodes);
+      setEdges(active.edges);
+      nodesRef.current = active.nodes;
+      edgesRef.current = active.edges;
+      setTool('select');
+      setEditingLabelId(null);
+      editingLabelIdRef.current = null;
+      setShowSql(false);
+      if (shouldPersist) {
+        void saveRoom(roomId, {
+          diagrams: data.diagrams,
+          mode: data.mode,
+          version: ROOM_VERSION,
+        });
+      }
+      if (fit) setFitRequestId((n) => n + 1);
+    },
+    [roomId, setNodes, setEdges],
+  );
+
   useEffect(() => {
     setRoomReady(false);
     const unsub = subscribeToRoom(roomId, {
       onRoomData: (data) => {
-        diagramsRef.current = data.diagrams;
-        const active = data.diagrams[data.mode] ?? {
-          nodes: [],
-          edges: [],
-        };
-        setMode(data.mode);
-        modeRef.current = data.mode;
-        setNodes(active.nodes);
-        setEdges(active.edges);
-        nodesRef.current = active.nodes;
-        edgesRef.current = active.edges;
-        setTool('select');
-        setEditingLabelId(null);
-        editingLabelIdRef.current = null;
-        setShowSql(false);
+        applyRoomData(data);
         setRoomReady(true);
       },
     });
     return () => unsub?.();
-  }, [roomId, setNodes, setEdges]);
+  }, [roomId, applyRoomData]);
+
+  const snapshotRoomData = (): RoomData => {
+    const diagrams = {
+      ...diagramsRef.current,
+      [modeRef.current]: {
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+      },
+    };
+    diagramsRef.current = diagrams;
+    return {
+      diagrams,
+      mode: modeRef.current,
+      version: ROOM_VERSION,
+    };
+  };
+
+  const handleExportJson = () => {
+    const room = snapshotRoomData();
+    const project = findProjectByRoomId(roomId);
+    const json = serializeProjectFile(room, project?.name);
+    downloadTextFile(
+      suggestExportFilename(project?.name, roomId),
+      json,
+    );
+  };
+
+  const handleImportJson = async (file: File) => {
+    const ok = window.confirm(
+      'Importar este JSON substitui os diagramas conceitual, lógico e físico do projeto atual. Continuar?',
+    );
+    if (!ok) return;
+
+    try {
+      const text = await readFileAsText(file);
+      const parsed = parseProjectFileJson(text);
+      applyRoomData(parsed.room, { persist: true, fit: true });
+    } catch (err) {
+      const message =
+        err instanceof ProjectFileError
+          ? err.message
+          : 'Não foi possível importar o arquivo.';
+      window.alert(message);
+    }
+  };
 
   const requestFit = () => setFitRequestId((n) => n + 1);
 
@@ -660,6 +727,10 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
         onChangeMode={handleChangeMode}
         showSql={showSql}
         onToggleSql={() => setShowSql((v) => !v)}
+        onExportJson={handleExportJson}
+        onImportJson={(file) => {
+          void handleImportJson(file);
+        }}
       />
 
       <ReactFlowProvider key={mode}>

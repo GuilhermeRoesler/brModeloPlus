@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createProject, deleteProject, listProjects } from '../services/projects';
-import type { AppUser, Project } from '../types';
+import type { AppUser, Project, RoomData } from '../types';
 
 export const useProjects = (user: AppUser | null) => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -18,9 +18,9 @@ export const useProjects = (user: AppUser | null) => {
     void refresh();
   }, [refresh]);
 
-  const create = async (name: string) => {
+  const create = async (name: string, room?: RoomData) => {
     if (!user) return null;
-    const roomId = await createProject(user, name);
+    const roomId = await createProject(user, name, room);
     await refresh();
     return roomId;
   };

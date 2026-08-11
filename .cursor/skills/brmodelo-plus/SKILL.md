@@ -35,7 +35,7 @@ src/
   App.tsx                 # roteamento dashboard ↔ editor
   config/                 # constantes de UI, LOCAL_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # utils puros (SQL, localStorage, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
+  lib/                    # utils puros (SQL, localStorage, projectFile, fileTransfer, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
   services/               # persistência local (projects + rooms)
   hooks/                  # useAuth (local), useProjects
   components/
@@ -76,6 +76,13 @@ Documento de sala (`RoomData`, `ROOM_VERSION = 3`):
 Cada modo tem **canvas e diagrama próprios**. Trocar de modo no header salva o diagrama atual e carrega o do destino (`ReactFlowProvider key={mode}`).
 
 `normalizeRoomData` em `lib/localStorage.ts` migra documentos v2 (um único `nodes`/`edges`) para o modo que estava salvo; salas novas já nascem com três diagramas vazios.
+
+### Import / export JSON
+
+- Formato portátil em `lib/projectFile.ts` (`format: "brmodelo-plus"` + `room: RoomData`); também aceita RoomData cru (v2/v3)
+- **Editor:** Exportar / Importar no header — import substitui os três diagramas da sala atual (com confirmação)
+- **Dashboard:** Importar JSON cria um projeto novo e abre o editor
+- Download/leitura de arquivo: `lib/fileTransfer.ts`
 
 ## Domínio do diagrama (100% React Flow)
 
