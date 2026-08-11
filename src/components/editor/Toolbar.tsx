@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   Circle,
   Diamond,
+  LayoutGrid,
   Minus,
   MousePointer2,
   Square,
@@ -13,12 +14,13 @@ type ToolbarProps = {
   tool: Tool;
   setTool: (tool: Tool) => void;
   currentMode: Mode;
+  onAutoLayout: () => void;
 };
 
 type ToolbarButtonProps = {
   icon: ComponentType<{ size?: number; className?: string }>;
   label: string;
-  active: boolean;
+  active?: boolean;
   onClick: () => void;
   color?: string;
 };
@@ -39,7 +41,7 @@ const ToolbarButton = ({ icon: Icon, label, active, onClick, color }: ToolbarBut
   </button>
 );
 
-export const Toolbar = ({ tool, setTool, currentMode }: ToolbarProps) => (
+export const Toolbar = ({ tool, setTool, currentMode, onAutoLayout }: ToolbarProps) => (
   <aside className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 p-2 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 z-10 select-none">
     <ToolbarButton
       icon={MousePointer2}
@@ -91,6 +93,13 @@ export const Toolbar = ({ tool, setTool, currentMode }: ToolbarProps) => (
       label="Conectar"
       active={tool === 'connection'}
       onClick={() => setTool('connection')}
+    />
+    <div className="w-8 h-px bg-slate-100 mx-auto my-1" />
+    <ToolbarButton
+      icon={LayoutGrid}
+      label="Auto layout"
+      onClick={onAutoLayout}
+      color="text-violet-600"
     />
   </aside>
 );

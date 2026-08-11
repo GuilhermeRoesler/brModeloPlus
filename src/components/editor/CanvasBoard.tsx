@@ -215,6 +215,7 @@ export const CanvasBoard = ({
       onMouseLeave={handleMouseUp}
       onContextMenu={(e) => e.preventDefault()}
       style={{ cursor: tool === 'select' ? 'grab' : 'crosshair' }}
+      id="diagram-canvas"
     >
       <div
         id="grid-bg"

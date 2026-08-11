@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { ZoomIn, ZoomOut } from 'lucide-react';
 import { HEADER_HEIGHT } from '../../config/constants';
 import { saveRoom, subscribeToRoom, updateRemoteCursor } from '../../services/rooms';
+import { autoLayout } from '../../lib/autoLayout';
+import { computeFitView } from '../../lib/viewport';
 import { generateId } from '../../lib/utils';
 import {
   MODES,
@@ -101,6 +103,39 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     });
   };
 
+  const fitNodesInView = (laidOut: DiagramNode[]) => {
+    if (laidOut.length === 0) return;
+    const canvas = document.getElementById('diagram-canvas');
+    const rect = canvas?.getBoundingClientRect();
+    if (!rect) return;
+    const fitted = computeFitView(laidOut, {
+      width: rect.width,
+      height: rect.height,
+    });
+    if (fitted) {
+      setPan(fitted.pan);
+      setZoom(fitted.zoom);
+    }
+  };
+
+  /** Aplica auto layout, atualiza estado e persiste. */
+  const commitDiagram = (
+    nextNodes: DiagramNode[],
+    nextConns: Connection[] = connectionsRef.current,
+    options: { fit?: boolean } = {},
+  ) => {
+    const { fit = true } = options;
+    const laidOut =
+      nextNodes.length > 0 ? autoLayout(nextNodes, nextConns) : nextNodes;
+    setNodes(laidOut);
+    setConnections(nextConns);
+    nodesRef.current = laidOut;
+    connectionsRef.current = nextConns;
+    if (fit) fitNodesInView(laidOut);
+    void persist(laidOut, nextConns);
+    return laidOut;
+  };
+
   const getMousePos = (e: MouseEvent) => {
     const x = (e.clientX - pan.x) / zoom;
     const y = (e.clientY - HEADER_HEIGHT - pan.y) / zoom;
@@ -149,11 +184,9 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     }
     if (!newNode) return;
 
-    const updatedNodes = [...nodes, newNode];
-    setNodes(updatedNodes);
+    commitDiagram([...nodes, newNode]);
     setTool('select');
     setSelectedIds([newNode.id]);
-    void persist(updatedNodes);
   };
 
   const handleCanvasMouseDown = (e: MouseEvent) => {
@@ -202,9 +235,7 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
             cardinalitySource: '',
             cardinalityTarget: '',
           };
-          const updatedConns = [...connections, newConn];
-          setConnections(updatedConns);
-          void persist(undefined, updatedConns);
+          commitDiagram(nodes, [...connections, newConn]);
         }
         tempConnectionStart.current = null;
         setTool('select');
@@ -307,14 +338,12 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
 
   const updateNode = (id: string, changes: Partial<DiagramNode>) => {
     const updated = nodes.map((n) => (n.id === id ? { ...n, ...changes } : n));
-    setNodes(updated);
-    void persist(updated);
+    commitDiagram(updated, connections, { fit: false });
   };
 
   const updateConnection = (id: string, changes: Partial<Connection>) => {
     const updated = connections.map((c) => (c.id === id ? { ...c, ...changes } : c));
-    setConnections(updated);
-    void persist(undefined, updated);
+    commitDiagram(nodes, updated, { fit: false });
   };
 
   const deleteSelected = (idOverride?: string | null) => {
@@ -329,15 +358,17 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
         !idsToDelete.includes(c.target),
     );
 
-    setNodes(newNodes);
-    setConnections(newConns);
     setSelectedIds([]);
-    void persist(newNodes, newConns);
+    commitDiagram(newNodes, newConns);
   };
 
   const handleChangeMode = (m: Mode) => {
     setMode(m);
     void persist(undefined, undefined, m);
+  };
+
+  const handleAutoLayout = () => {
+    commitDiagram(nodes, connections);
   };
 
   return (
@@ -352,7 +383,12 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
       />
 
       <div className="flex-1 flex relative overflow-hidden">
-        <Toolbar tool={tool} setTool={setTool} currentMode={mode} />
+        <Toolbar
+          tool={tool}
+          setTool={setTool}
+          currentMode={mode}
+          onAutoLayout={handleAutoLayout}
+        />
 
         <CanvasBoard
           nodes={nodes}
