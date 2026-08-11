@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react';
 import {
-  Circle,
   Diamond,
   LayoutGrid,
   Minus,
@@ -66,13 +65,6 @@ export const Toolbar = ({ tool, setTool, currentMode, onAutoLayout }: ToolbarPro
           active={tool === 'relationship'}
           onClick={() => setTool('relationship')}
           color="text-rose-500"
-        />
-        <ToolbarButton
-          icon={Circle}
-          label="Atributo"
-          active={tool === 'attribute'}
-          onClick={() => setTool('attribute')}
-          color="text-amber-500"
         />
       </>
     )}

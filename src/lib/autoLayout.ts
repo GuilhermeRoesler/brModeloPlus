@@ -11,9 +11,10 @@ const ATTR_GAP_Y = 32;
 const COMPOSITE_OFFSET_X = 90;
 const FORCE_ITERATIONS = 180;
 const IDEAL_EDGE_LENGTH = 180;
+/** Diagonal-alvo do bbox final (independente do resultado do force). */
+const BASE_TARGET_SPAN = 520;
 
 type LayoutOptions = {
-  /** Se informado, só reposiciona estes nós (e atributos ligados a eles). */
   selectedIds?: string[];
 };
 
@@ -28,19 +29,60 @@ const neighborsOf = (id: string, connections: Connection[]) => {
   return ids;
 };
 
-const buildAdjacency = (ids: string[], connections: Connection[]) => {
-  const set = new Set(ids);
+/** Apenas arestas entre nós estruturais (ignora ligações com atributos). */
+const buildStructuralAdjacency = (
+  structuralIds: string[],
+  nodesById: Map<string, DiagramNode>,
+  connections: Connection[],
+) => {
+  const set = new Set(structuralIds);
   const edges: Array<[string, string]> = [];
   for (const c of connections) {
-    if (set.has(c.source) && set.has(c.target) && c.source !== c.target) {
-      edges.push([c.source, c.target]);
-    }
+    if (!set.has(c.source) || !set.has(c.target) || c.source === c.target) continue;
+    const s = nodesById.get(c.source);
+    const t = nodesById.get(c.target);
+    if (!s || !t || !isStructural(s) || !isStructural(t)) continue;
+    edges.push([c.source, c.target]);
   }
   return edges;
 };
 
-/** Force-directed estável: seed canônico + gravidade + escala normalizada. */
-const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<string, Point> => {
+const normalizeBBox = (positions: Map<string, Point>, ids: Iterable<string>, targetSpan: number) => {
+  const list = [...ids];
+  if (list.length === 0) return;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const id of list) {
+    const p = positions.get(id);
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  if (!Number.isFinite(minX)) return;
+
+  const span = Math.hypot(maxX - minX, maxY - minY) || 1;
+  const scale = targetSpan / span;
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  for (const id of list) {
+    const p = positions.get(id);
+    if (!p) continue;
+    p.x = (p.x - cx) * scale;
+    p.y = (p.y - cy) * scale;
+  }
+};
+
+/** Force-directed estável: seed canônico + gravidade + bbox normalizado. */
+const layoutStructural = (
+  nodes: DiagramNode[],
+  nodesById: Map<string, DiagramNode>,
+  connections: Connection[],
+): Map<string, Point> => {
   const positions = new Map<string, Point>();
   if (nodes.length === 0) return positions;
 
@@ -50,11 +92,11 @@ const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<
   }
 
   const ids = nodes.map((n) => n.id);
-  const edges = buildAdjacency(ids, connections);
+  const edges = buildStructuralAdjacency(ids, nodesById, connections);
   const ideal = IDEAL_EDGE_LENGTH;
-  // Raio inicial proporcional à quantidade (não às posições atuais)
   const seedRadius = Math.max(ideal, ideal * Math.sqrt(nodes.length / Math.PI));
 
+  // Seed canônico — nunca parte das posições atuais (evita expansão acumulada)
   ids.forEach((id, i) => {
     const angle = (2 * Math.PI * i) / ids.length - Math.PI / 2;
     positions.set(id, {
@@ -65,13 +107,12 @@ const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<
 
   let temp = ideal;
   const cooling = temp / (FORCE_ITERATIONS + 1);
-  const gravity = 0.08;
+  const gravity = 0.12;
 
   for (let iter = 0; iter < FORCE_ITERATIONS; iter++) {
     const disp = new Map<string, Point>();
     for (const id of ids) disp.set(id, { x: 0, y: 0 });
 
-    // Repulsão com corte: evita empurrão residual a longas distâncias
     for (let i = 0; i < ids.length; i++) {
       for (let j = i + 1; j < ids.length; j++) {
         const a = positions.get(ids[i])!;
@@ -79,7 +120,7 @@ const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         const d = Math.hypot(dx, dy) || 0.01;
-        if (d > ideal * 4) continue;
+        if (d > ideal * 3.5) continue;
         const force = (ideal * ideal) / d;
         const fx = (dx / d) * force;
         const fy = (dy / d) * force;
@@ -92,7 +133,6 @@ const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<
       }
     }
 
-    // Atração nas arestas
     for (const [s, t] of edges) {
       const a = positions.get(s)!;
       const b = positions.get(t)!;
@@ -110,12 +150,12 @@ const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<
       db.y += fy;
     }
 
-    // Relacionamentos no ponto médio dos vizinhos
     for (const n of nodes) {
       if (n.type !== NODE_TYPES.RELATIONSHIP) continue;
-      const neigh = neighborsOf(n.id, connections).filter((id) =>
-        nodes.some((x) => x.id === id && x.type !== NODE_TYPES.RELATIONSHIP),
-      );
+      const neigh = neighborsOf(n.id, connections).filter((id) => {
+        const other = nodesById.get(id);
+        return other != null && isStructural(other) && other.type !== NODE_TYPES.RELATIONSHIP;
+      });
       if (neigh.length < 2) continue;
       let mx = 0;
       let my = 0;
@@ -132,7 +172,6 @@ const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<
       d.y += (my - p.y) * 0.45;
     }
 
-    // Gravidade para o centro — impede expansão infinita
     for (const id of ids) {
       const p = positions.get(id)!;
       const d = disp.get(id)!;
@@ -152,33 +191,11 @@ const layoutStructural = (nodes: DiagramNode[], connections: Connection[]): Map<
     temp -= cooling;
   }
 
-  // Normaliza escala para distância média alvo entre pares ligados (ou vizinhos)
-  let scalePairs = 0;
-  let scaleSum = 0;
-  if (edges.length > 0) {
-    for (const [s, t] of edges) {
-      const a = positions.get(s)!;
-      const b = positions.get(t)!;
-      scaleSum += Math.hypot(a.x - b.x, a.y - b.y);
-      scalePairs++;
-    }
-  } else {
-    for (let i = 0; i < ids.length; i++) {
-      const a = positions.get(ids[i])!;
-      const b = positions.get(ids[(i + 1) % ids.length])!;
-      scaleSum += Math.hypot(a.x - b.x, a.y - b.y);
-      scalePairs++;
-    }
-  }
-  const avg = scaleSum / Math.max(scalePairs, 1);
-  if (avg > 1) {
-    const scale = ideal / avg;
-    for (const id of ids) {
-      const p = positions.get(id)!;
-      p.x *= scale;
-      p.y *= scale;
-    }
-  }
+  normalizeBBox(
+    positions,
+    ids,
+    Math.max(BASE_TARGET_SPAN, IDEAL_EDGE_LENGTH * Math.sqrt(Math.max(nodes.length, 1))),
+  );
 
   return positions;
 };
@@ -201,6 +218,7 @@ const placeFan = (
 /**
  * Reorganiza o diagrama: nós estruturais via force-directed;
  * atributos em colunas laterais (estilo Heuser / “árvore de natal”).
+ * Idempotente: cliques repetidos não expandem o diagrama.
  */
 export const autoLayout = (
   nodes: DiagramNode[],
@@ -209,16 +227,17 @@ export const autoLayout = (
 ): DiagramNode[] => {
   if (nodes.length === 0) return nodes;
 
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+
   const selected = options.selectedIds?.length
     ? new Set(options.selectedIds)
     : null;
 
-  // Inclui atributos ligados a nós estruturais selecionados
   if (selected) {
     for (const n of nodes) {
       if (n.type !== NODE_TYPES.ATTRIBUTE || selected.has(n.id)) continue;
       const owner = neighborsOf(n.id, connections).find((id) => {
-        const o = nodes.find((x) => x.id === id);
+        const o = nodesById.get(id);
         return o && isStructural(o) && selected.has(o.id);
       });
       if (owner) selected.add(n.id);
@@ -237,7 +256,7 @@ export const autoLayout = (
     positions.set(n.id, { x: n.x, y: n.y });
   }
 
-  const structuralPositions = layoutStructural(structural, connections);
+  const structuralPositions = layoutStructural(structural, nodesById, connections);
   for (const [id, p] of structuralPositions) {
     positions.set(id, p);
   }
@@ -248,8 +267,8 @@ export const autoLayout = (
   for (const attr of attributes) {
     const neigh = neighborsOf(attr.id, connections);
     const ownerId = neigh.find((id) => {
-      const n = nodes.find((x) => x.id === id);
-      return n && isStructural(n);
+      const n = nodesById.get(id);
+      return n != null && isStructural(n);
     });
     if (!ownerId) continue;
     const list = attrsByOwner.get(ownerId) ?? [];
@@ -259,7 +278,10 @@ export const autoLayout = (
 
   for (const [ownerId, attrs] of attrsByOwner) {
     const ownerPos = positions.get(ownerId)!;
-    const sorted = [...attrs].sort((a, b) => a.label.localeCompare(b.label, 'pt'));
+    const sorted = [...attrs].sort((a, b) => {
+      const byLabel = a.label.localeCompare(b.label, 'pt');
+      return byLabel !== 0 ? byLabel : a.id.localeCompare(b.id);
+    });
     const mid = Math.ceil(sorted.length / 2);
     const left = sorted.slice(0, mid);
     const right = sorted.slice(mid);
@@ -294,12 +316,15 @@ export const autoLayout = (
       });
       const group = siblings
         .filter((c) => !placedAttrs.has(c.id) || c.id === attr.id)
-        .sort((a, b) => a.label.localeCompare(b.label, 'pt'));
+        .sort((a, b) => {
+          const byLabel = a.label.localeCompare(b.label, 'pt');
+          return byLabel !== 0 ? byLabel : a.id.localeCompare(b.id);
+        });
 
       const parentPos = positions.get(parentId)!;
       const ownerStructural = neighborsOf(parentId, connections).find((id) => {
-        const n = nodes.find((x) => x.id === id);
-        return n && isStructural(n);
+        const n = nodesById.get(id);
+        return n != null && isStructural(n);
       });
       const ownerPos = ownerStructural ? positions.get(ownerStructural)! : parentPos;
       const side: -1 | 1 = parentPos.x >= ownerPos.x ? 1 : -1;
@@ -315,52 +340,60 @@ export const autoLayout = (
 
   const orphans = attributes.filter((a) => !placedAttrs.has(a.id));
   if (orphans.length > 0) {
-    let minX = Infinity;
-    let maxY = -Infinity;
-    for (const p of positions.values()) {
-      minX = Math.min(minX, p.x);
-      maxY = Math.max(maxY, p.y);
+    // Só considera nós já posicionados neste layout (evita “fugir” com coords antigas)
+    const placedIds = [
+      ...structural.map((n) => n.id),
+      ...[...placedAttrs],
+    ];
+    let minX = 0;
+    let maxY = 0;
+    if (placedIds.length > 0) {
+      minX = Infinity;
+      maxY = -Infinity;
+      for (const id of placedIds) {
+        const p = positions.get(id)!;
+        minX = Math.min(minX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
+      if (!Number.isFinite(minX)) minX = 0;
+      if (!Number.isFinite(maxY)) maxY = 0;
     }
-    if (!Number.isFinite(minX)) minX = 0;
-    if (!Number.isFinite(maxY)) maxY = 0;
 
     orphans
-      .sort((a, b) => a.label.localeCompare(b.label, 'pt'))
+      .sort((a, b) => {
+        const byLabel = a.label.localeCompare(b.label, 'pt');
+        return byLabel !== 0 ? byLabel : a.id.localeCompare(b.id);
+      })
       .forEach((attr, i) => {
         positions.set(attr.id, {
           x: minX + (i % 6) * ATTR_OFFSET_X,
           y: maxY + 100 + Math.floor(i / 6) * ATTR_GAP_Y,
         });
+        placedAttrs.add(attr.id);
       });
   }
 
-  const movedIds = new Set([
+  const movedIds = [
     ...structural.map((n) => n.id),
     ...attributes.map((n) => n.id),
-  ]);
-  let sx = 0;
-  let sy = 0;
-  let count = 0;
-  for (const id of movedIds) {
-    const p = positions.get(id);
-    if (!p) continue;
-    sx += p.x;
-    sy += p.y;
-    count++;
-  }
-  if (count > 0) {
-    const ox = sx / count;
-    const oy = sy / count;
-    for (const id of movedIds) {
-      const p = positions.get(id)!;
-      p.x -= ox;
-      p.y -= oy;
-    }
-  }
+  ];
+
+  // Normalização final do diagrama completo (estrutural + atributos):
+  // garante escala idempotente mesmo com muitos atributos ligados.
+  const targetSpan = Math.max(
+    BASE_TARGET_SPAN,
+    IDEAL_EDGE_LENGTH * Math.sqrt(Math.max(structural.length, 1)) +
+      Math.min(attributes.length, 24) * 12,
+  );
+  normalizeBBox(positions, movedIds, targetSpan);
 
   return nodes.map((n) => {
     const p = positions.get(n.id);
     if (!p || !shouldMove(n.id)) return n;
-    return { ...n, x: Math.round(p.x), y: Math.round(p.y) };
+    return {
+      ...n,
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+    };
   });
 };

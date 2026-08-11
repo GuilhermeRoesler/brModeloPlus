@@ -21,7 +21,6 @@ export type Tool =
   | 'select'
   | 'entity'
   | 'relationship'
-  | 'attribute'
   | 'table'
   | 'connection';
 

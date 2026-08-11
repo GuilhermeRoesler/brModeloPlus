@@ -115,12 +115,12 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
   const fitNodesInView = (laidOut: DiagramNode[]) => {
     if (laidOut.length === 0) return;
     const canvas = document.getElementById('diagram-canvas');
-    const rect = canvas?.getBoundingClientRect();
-    if (!rect) return;
-    const fitted = computeFitView(laidOut, {
-      width: rect.width,
-      height: rect.height,
-    });
+    if (!canvas) return;
+    // clientWidth/Height ignoram barras de rolagem e são mais estáveis que getBoundingClientRect
+    const width = canvas.clientWidth || canvas.getBoundingClientRect().width;
+    const height = canvas.clientHeight || canvas.getBoundingClientRect().height;
+    if (width <= 0 || height <= 0) return;
+    const fitted = computeFitView(laidOut, { width, height });
     if (fitted) {
       setPan(fitted.pan);
       setZoom(fitted.zoom);
@@ -173,15 +173,6 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
         label: 'Rel',
         width: 80,
         height: 80,
-      };
-    } else if (tool === 'attribute') {
-      newNode = {
-        id: generateId(),
-        x: pos.x,
-        y: pos.y,
-        type: NODE_TYPES.ATTRIBUTE,
-        label: 'Atributo',
-        attrType: 'normal',
       };
     } else if (tool === 'table') {
       newNode = {

@@ -77,18 +77,22 @@ export const computeFitView = (
   if (!bounds || viewport.width <= 0 || viewport.height <= 0) return null;
 
   const padding = options.padding ?? 72;
-  const minZoom = options.minZoom ?? 0.2;
-  const maxZoom = options.maxZoom ?? 1.25;
+  const minZoom = options.minZoom ?? 0.35;
+  const maxZoom = options.maxZoom ?? 1.15;
 
-  const zoomX = (viewport.width - padding * 2) / bounds.width;
-  const zoomY = (viewport.height - padding * 2) / bounds.height;
-  const zoom = Math.min(maxZoom, Math.max(minZoom, Math.min(zoomX, zoomY)));
+  const availW = Math.max(viewport.width - padding * 2, 1);
+  const availH = Math.max(viewport.height - padding * 2, 1);
+  const zoomX = availW / bounds.width;
+  const zoomY = availH / bounds.height;
+  // Evita zoom fracionário “nervoso” entre cliques (ratchet por subpixel)
+  const raw = Math.min(zoomX, zoomY);
+  const zoom = Math.min(maxZoom, Math.max(minZoom, Math.round(raw * 100) / 100));
 
   return {
     zoom,
     pan: {
-      x: viewport.width / 2 - bounds.cx * zoom,
-      y: viewport.height / 2 - bounds.cy * zoom,
+      x: Math.round(viewport.width / 2 - bounds.cx * zoom),
+      y: Math.round(viewport.height / 2 - bounds.cy * zoom),
     },
   };
 };
