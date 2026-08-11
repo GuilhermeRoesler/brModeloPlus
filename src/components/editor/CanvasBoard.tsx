@@ -214,7 +214,7 @@ export const CanvasBoard = ({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onContextMenu={(e) => e.preventDefault()}
-      style={{ cursor: tool === 'select' ? 'default' : 'crosshair' }}
+      style={{ cursor: tool === 'select' ? 'grab' : 'crosshair' }}
     >
       <div
         id="grid-bg"
@@ -355,20 +355,21 @@ export const CanvasBoard = ({
                 </g>
               ),
           )}
-        </g>
 
-        {selectionBox && (
-          <rect
-            x={(selectionBox.startX - pan.x) / zoom}
-            y={(selectionBox.startY - pan.y) / zoom}
-            width={(selectionBox.currentX - selectionBox.startX) / zoom}
-            height={(selectionBox.currentY - selectionBox.startY) / zoom}
-            fill="rgba(99, 102, 241, 0.1)"
-            stroke="#6366f1"
-            strokeDasharray="4"
-            className="pointer-events-none"
-          />
-        )}
+          {selectionBox && (
+            <rect
+              x={selectionBox.startX}
+              y={selectionBox.startY}
+              width={selectionBox.currentX - selectionBox.startX}
+              height={selectionBox.currentY - selectionBox.startY}
+              fill="rgba(99, 102, 241, 0.1)"
+              stroke="#6366f1"
+              strokeDasharray="4"
+              strokeWidth={1 / zoom}
+              className="pointer-events-none"
+            />
+          )}
+        </g>
       </svg>
     </div>
   );

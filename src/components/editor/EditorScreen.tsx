@@ -44,6 +44,7 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
   const isDraggingCanvas = useRef(false);
   const isDraggingNode = useRef(false);
   const isSelecting = useRef(false);
+  const didCanvasPan = useRef(false);
   const selectionBoxStart = useRef<Point | null>(null);
   const dragStart = useRef<Point>({ x: 0, y: 0 });
   const canvasDragStart = useRef<Point>({ x: 0, y: 0 });
@@ -156,32 +157,33 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
   };
 
   const handleCanvasMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return;
+
     const pos = getMousePos(e);
     const target = e.target as HTMLElement;
+    const isEmptyCanvas =
+      target.id === 'grid-bg' || target.tagName === 'svg' || target.tagName === 'DIV';
 
-    if (e.button === 2) {
-      isDraggingCanvas.current = true;
-      canvasDragStart.current = { x: e.clientX, y: e.clientY };
-      dragStart.current = { ...pan };
-      return;
-    }
+    if (!isEmptyCanvas) return;
 
-    if (e.button === 0) {
-      if (target.id === 'grid-bg' || target.tagName === 'svg' || target.tagName === 'DIV') {
-        if (tool === 'select') {
-          isSelecting.current = true;
-          selectionBoxStart.current = { x: e.clientX, y: e.clientY };
-          setSelectionBox({
-            startX: pos.rawX,
-            startY: pos.rawY,
-            currentX: pos.rawX,
-            currentY: pos.rawY,
-          });
-          if (!e.shiftKey) setSelectedIds([]);
-        } else {
-          addNode(pos);
-        }
+    if (tool === 'select') {
+      if (e.shiftKey) {
+        isSelecting.current = true;
+        selectionBoxStart.current = { x: pos.x, y: pos.y };
+        setSelectionBox({
+          startX: pos.x,
+          startY: pos.y,
+          currentX: pos.x,
+          currentY: pos.y,
+        });
+      } else {
+        isDraggingCanvas.current = true;
+        didCanvasPan.current = false;
+        canvasDragStart.current = { x: e.clientX, y: e.clientY };
+        dragStart.current = { ...pan };
       }
+    } else {
+      addNode(pos);
     }
   };
 
@@ -237,16 +239,17 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     if (isDraggingCanvas.current) {
       const dx = e.clientX - canvasDragStart.current.x;
       const dy = e.clientY - canvasDragStart.current.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didCanvasPan.current = true;
       setPan({ x: dragStart.current.x + dx, y: dragStart.current.y + dy });
       return;
     }
 
     if (isSelecting.current && selectionBoxStart.current) {
       setSelectionBox({
-        startX: Math.min(selectionBoxStart.current.x, e.clientX),
-        startY: Math.min(selectionBoxStart.current.y, e.clientY) - HEADER_HEIGHT,
-        currentX: Math.max(selectionBoxStart.current.x, e.clientX),
-        currentY: Math.max(selectionBoxStart.current.y, e.clientY) - HEADER_HEIGHT,
+        startX: Math.min(selectionBoxStart.current.x, pos.x),
+        startY: Math.min(selectionBoxStart.current.y, pos.y),
+        currentX: Math.max(selectionBoxStart.current.x, pos.x),
+        currentY: Math.max(selectionBoxStart.current.y, pos.y),
       });
       return;
     }
@@ -269,28 +272,34 @@ export const EditorScreen = ({ user, roomId, onBack }: EditorScreenProps) => {
     }
   };
 
-  const handleMouseUp = (e: MouseEvent) => {
+  const handleMouseUp = () => {
     if (isDraggingNode.current) {
       void persist(nodes);
     }
 
+    if (isDraggingCanvas.current && !didCanvasPan.current) {
+      setSelectedIds([]);
+    }
+
     isDraggingCanvas.current = false;
     isDraggingNode.current = false;
+    didCanvasPan.current = false;
 
     if (isSelecting.current) {
       isSelecting.current = false;
       const box = selectionBox;
       if (box) {
-        const worldX1 = (box.startX - pan.x) / zoom;
-        const worldY1 = (box.startY - pan.y) / zoom;
-        const worldX2 = (box.currentX - pan.x) / zoom;
-        const worldY2 = (box.currentY - pan.y) / zoom;
-
         const inside = nodes
-          .filter((n) => n.x >= worldX1 && n.x <= worldX2 && n.y >= worldY1 && n.y <= worldY2)
+          .filter(
+            (n) =>
+              n.x >= box.startX &&
+              n.x <= box.currentX &&
+              n.y >= box.startY &&
+              n.y <= box.currentY,
+          )
           .map((n) => n.id);
 
-        setSelectedIds((prev) => (e.shiftKey ? [...new Set([...prev, ...inside])] : inside));
+        setSelectedIds((prev) => [...new Set([...prev, ...inside])]);
       }
       setSelectionBox(null);
     }
