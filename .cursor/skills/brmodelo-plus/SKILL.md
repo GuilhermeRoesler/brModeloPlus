@@ -35,21 +35,21 @@ src/
   App.tsx                 # roteamento dashboard ↔ editor
   config/                 # constantes de UI, LOCAL_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # utils puros (SQL, localStorage, ids, autoLayout/ELK, nodeGeometry, diagramFlow)
+  lib/                    # utils puros (SQL, localStorage, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
   services/               # persistência local (projects + rooms)
   hooks/                  # useAuth (local), useProjects
   components/
     dashboard/ | editor/ | ui/
 ```
 
-| Camada | Pode | Não pode |
-|--------|------|----------|
-| `components/` | UI + handlers de interação | lógica de layout ELK |
-| `hooks/` | orquestrar services + React state | lógica de layout ELK |
-| `services/` | localStorage | JSX |
-| `lib/` | funções puras (incl. ELK async) | React (exceto tipos do RF) |
-| `config/` | flags / usuário local | lógica de negócio |
-| `types/` | tipos e constantes de domínio | side effects |
+| Camada        | Pode                              | Não pode                   |
+| ------------- | --------------------------------- | -------------------------- |
+| `components/` | UI + handlers de interação        | lógica de layout ELK       |
+| `hooks/`      | orquestrar services + React state | lógica de layout ELK       |
+| `services/`   | localStorage                      | JSX                        |
+| `lib/`        | funções puras (incl. ELK async)   | React (exceto tipos do RF) |
+| `config/`     | flags / usuário local             | lógica de negócio          |
+| `types/`      | tipos e constantes de domínio     | side effects               |
 
 **Regra de ouro:** não recolocar tudo em `App.tsx`. Novas features entram na camada certa.
 
@@ -97,6 +97,7 @@ Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` + `u
 - **Seleção / pan / zoom / box select / Delete·Backspace** — nativos do React Flow; scroll = zoom; seleção lida de `node.selected` / `edge.selected`
 - **Drag estrutural** — ao mover entidade/relacionamento, atributos ligados (incl. compostos) acompanham o mesmo delta (`followStructuralDrags`); ids já no lote de drag não são deslocados de novo (multi-seleção)
 - **Conexões** — tool `connection`: handle→handle (`ConnectionMode.Loose`)
+- **Cardinalidade** — chips nas arestas estruturais (`CardinalityEdge`), centro do chip **sobre a reta handle→handle** a distância fixa da borda (`cardinalityLabelPoint`); clique cicla `1` / `n` / `(0,1)` / `(1,1)` / `(0,n)` / `(1,n)`; em entidade↔relacionamento (Heuser) o chip fica só no lado da entidade; painel espelha com select (`lib/cardinality.ts`)
 - **Auto layout** (`lib/autoLayout.ts`): **ELK.js stress** nos nós estruturais; atributos Heuser reposicionados em cascata sob o dono
 - **`commitDiagram`**: async; `{ fit?, layout? }` — Enter/conexões usam `layout: false`
 - **Enter (conceitual):** cria atributo ligado **abaixo** do dono (cascata Heuser), edição inline; Esc / blur finaliza

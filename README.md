@@ -17,6 +17,7 @@
   - Painel de propriedades.
   - **Auto layout** (**ELK.js stress** nos nós estruturais; atributos Heuser em cascata sob o dono).
   - **Conectar:** arrastar handle→handle (modo Conectar).
+  - **Cardinalidade:** chips nas arestas (clique para ciclar 1, N, (0,1)…); em entidade↔relacionamento o valor fica no lado da entidade. Também editável no painel ao selecionar a aresta.
   - **Enter** (modo conceitual): cria atributo ligado abaixo do dono com edição inline do nome.
   - **Tab** (modo conceitual): com entidade selecionada, cria relacionamento já conectado à direita (edição inline); Tab de novo cria a próxima entidade interligada.
 - **Geração de SQL:** `CREATE TABLE` a partir do modelo físico.
@@ -59,7 +60,7 @@ src/
   App.tsx                 # Roteador (dashboard → editor)
   config/                 # Constantes e LOCAL_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # SQL, localStorage, autoLayout/ELK, nodeGeometry, diagramFlow
+  lib/                    # SQL, localStorage, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality
   services/               # Projetos e salas (localStorage)
   hooks/                  # useAuth, useProjects
   components/

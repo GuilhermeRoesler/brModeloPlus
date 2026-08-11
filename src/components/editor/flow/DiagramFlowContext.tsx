@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { CardinalitySide } from '../../../lib/cardinality';
 
 export type DiagramFlowContextValue = {
   editingLabelId: string | null;
@@ -7,6 +8,8 @@ export type DiagramFlowContextValue = {
   onInlineLabelSubmit: (id: string) => void;
   /** Tab na edição inline: cadeia entidade ↔ relacionamento. */
   onInlineLabelTab: (id: string) => void;
+  /** Clique no rótulo da aresta: cicla cardinalidade. */
+  onCycleEdgeCardinality: (edgeId: string, side: CardinalitySide) => void;
   connectable: boolean;
 };
 

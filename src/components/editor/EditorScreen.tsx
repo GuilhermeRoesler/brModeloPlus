@@ -14,6 +14,11 @@ import { ZoomIn, ZoomOut } from 'lucide-react';
 import { saveRoom, subscribeToRoom } from '../../services/rooms';
 import { autoLayout } from '../../lib/autoLayout';
 import {
+  cardinalityFieldForSide,
+  nextCardinality,
+  type CardinalitySide,
+} from '../../lib/cardinality';
+import {
   createErEdge,
   createErNode,
   findAttributeOwnerId,
@@ -556,6 +561,18 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     void commitDiagram(nodesRef.current, updated, { fit: false, layout: false });
   };
 
+  const handleCycleEdgeCardinality = (
+    edgeId: string,
+    side: CardinalitySide,
+  ) => {
+    const edge = edgesRef.current.find((e) => e.id === edgeId);
+    if (!edge) return;
+    const field = cardinalityFieldForSide(side);
+    updateEdge(edgeId, {
+      [field]: nextCardinality(edge.data?.[field]),
+    });
+  };
+
   const deleteSelected = (idOverride?: string | null) => {
     const idsToDelete = idOverride ? [idOverride] : selectedIdsRef.current;
     if (idsToDelete.length === 0) return;
@@ -619,6 +636,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
           onInlineLabelEnd={handleInlineLabelEnd}
           onInlineLabelSubmit={handleInlineLabelSubmit}
           onInlineLabelTab={handleInlineLabelTab}
+          onCycleEdgeCardinality={handleCycleEdgeCardinality}
           fitRequestId={fitRequestId}
         />
 

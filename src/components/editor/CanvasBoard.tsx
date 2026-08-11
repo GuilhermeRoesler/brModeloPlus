@@ -17,6 +17,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { ErEdge, ErNode, Tool } from '../../types';
+import type { CardinalitySide } from '../../lib/cardinality';
 import { AttributeNode } from './flow/AttributeNode';
 import { CardinalityEdge } from './flow/CardinalityEdge';
 import { DiagramFlowProvider } from './flow/DiagramFlowContext';
@@ -46,6 +47,7 @@ type CanvasBoardProps = {
   onInlineLabelEnd?: (id: string) => void;
   onInlineLabelSubmit?: (id: string) => void;
   onInlineLabelTab?: (id: string) => void;
+  onCycleEdgeCardinality?: (edgeId: string, side: CardinalitySide) => void;
   fitRequestId?: number;
 };
 
@@ -74,6 +76,7 @@ export const CanvasBoard = ({
   onInlineLabelEnd,
   onInlineLabelSubmit,
   onInlineLabelTab,
+  onCycleEdgeCardinality,
   fitRequestId = 0,
 }: CanvasBoardProps) => {
   const { screenToFlowPosition } = useReactFlow();
@@ -85,6 +88,7 @@ export const CanvasBoard = ({
       onInlineLabelEnd: onInlineLabelEnd ?? (() => undefined),
       onInlineLabelSubmit: onInlineLabelSubmit ?? (() => undefined),
       onInlineLabelTab: onInlineLabelTab ?? (() => undefined),
+      onCycleEdgeCardinality: onCycleEdgeCardinality ?? (() => undefined),
       connectable: tool === 'connection',
     }),
     [
@@ -93,6 +97,7 @@ export const CanvasBoard = ({
       onInlineLabelEnd,
       onInlineLabelSubmit,
       onInlineLabelTab,
+      onCycleEdgeCardinality,
       tool,
     ],
   );

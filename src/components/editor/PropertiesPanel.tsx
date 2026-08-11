@@ -12,6 +12,11 @@ import {
 import { PropertyInput } from '../ui/PropertyInput';
 import { generateId } from '../../lib/utils';
 import {
+  CARDINALITY_OPTIONS,
+  cardinalityFieldForSide,
+  entityParticipationSide,
+} from '../../lib/cardinality';
+import {
   NODE_TYPES,
   type ErEdge,
   type ErNode,
@@ -27,16 +32,6 @@ type PropertiesPanelProps = {
   updateEdge: (id: string, changes: Partial<NonNullable<ErEdge['data']>>) => void;
   deleteSelected: (idOverride?: string | null) => void;
 };
-
-const CARDINALITY_OPTIONS = [
-  { value: '', label: 'Nenhuma' },
-  { value: '1', label: '1' },
-  { value: 'n', label: 'N' },
-  { value: '(0,1)', label: '(0,1)' },
-  { value: '(1,1)', label: '(1,1)' },
-  { value: '(0,n)', label: '(0,n)' },
-  { value: '(1,n)', label: '(1,n)' },
-];
 
 export const PropertiesPanel = ({
   selectedIds,
@@ -253,20 +248,57 @@ export const PropertiesPanel = ({
                 <p className="font-bold text-slate-800 text-lg">Ligação</p>
               </div>
             </div>
-            <PropertyInput
-              label="Cardinalidade Origem"
-              type="select"
-              value={selectedEdge.data?.cardinalitySource ?? ''}
-              onChange={(val) => updateEdge(selectedId, { cardinalitySource: val })}
-              options={CARDINALITY_OPTIONS}
-            />
-            <PropertyInput
-              label="Cardinalidade Destino"
-              type="select"
-              value={selectedEdge.data?.cardinalityTarget ?? ''}
-              onChange={(val) => updateEdge(selectedId, { cardinalityTarget: val })}
-              options={CARDINALITY_OPTIONS}
-            />
+            {(() => {
+              const participation = entityParticipationSide(selectedEdge, nodes);
+              if (participation) {
+                const entityId =
+                  participation === 'source'
+                    ? selectedEdge.source
+                    : selectedEdge.target;
+                const entity = nodes.find((n) => n.id === entityId);
+                const field = cardinalityFieldForSide(participation);
+                return (
+                  <PropertyInput
+                    label={`Cardinalidade (${entity?.data.label || 'entidade'})`}
+                    type="select"
+                    value={selectedEdge.data?.[field] ?? ''}
+                    onChange={(val) =>
+                      updateEdge(selectedId, { [field]: val })
+                    }
+                    options={CARDINALITY_OPTIONS}
+                  />
+                );
+              }
+
+              const sourceNode = nodes.find((n) => n.id === selectedEdge.source);
+              const targetNode = nodes.find((n) => n.id === selectedEdge.target);
+              return (
+                <>
+                  <PropertyInput
+                    label={`Cardinalidade (${sourceNode?.data.label || 'origem'})`}
+                    type="select"
+                    value={selectedEdge.data?.cardinalitySource ?? ''}
+                    onChange={(val) =>
+                      updateEdge(selectedId, { cardinalitySource: val })
+                    }
+                    options={CARDINALITY_OPTIONS}
+                  />
+                  <PropertyInput
+                    label={`Cardinalidade (${targetNode?.data.label || 'destino'})`}
+                    type="select"
+                    value={selectedEdge.data?.cardinalityTarget ?? ''}
+                    onChange={(val) =>
+                      updateEdge(selectedId, { cardinalityTarget: val })
+                    }
+                    options={CARDINALITY_OPTIONS}
+                  />
+                </>
+              );
+            })()}
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Dica: no canvas, clique no chip <span className="font-semibold">?</span> da
+              aresta para alternar 1, N, (0,1), (1,1), (0,n), (1,n).
+            </p>
           </div>
         )}
       </div>
