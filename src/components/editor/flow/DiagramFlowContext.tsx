@@ -5,6 +5,8 @@ export type DiagramFlowContextValue = {
   onInlineLabelChange: (id: string, label: string) => void;
   onInlineLabelEnd: (id: string) => void;
   onInlineLabelSubmit: (id: string) => void;
+  /** Tab na edição inline: cadeia entidade ↔ relacionamento. */
+  onInlineLabelTab: (id: string) => void;
   connectable: boolean;
 };
 

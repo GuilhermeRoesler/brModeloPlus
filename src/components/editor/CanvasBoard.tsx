@@ -45,6 +45,7 @@ type CanvasBoardProps = {
   onInlineLabelChange?: (id: string, label: string) => void;
   onInlineLabelEnd?: (id: string) => void;
   onInlineLabelSubmit?: (id: string) => void;
+  onInlineLabelTab?: (id: string) => void;
   fitRequestId?: number;
 };
 
@@ -72,6 +73,7 @@ export const CanvasBoard = ({
   onInlineLabelChange,
   onInlineLabelEnd,
   onInlineLabelSubmit,
+  onInlineLabelTab,
   fitRequestId = 0,
 }: CanvasBoardProps) => {
   const { screenToFlowPosition } = useReactFlow();
@@ -82,6 +84,7 @@ export const CanvasBoard = ({
       onInlineLabelChange: onInlineLabelChange ?? (() => undefined),
       onInlineLabelEnd: onInlineLabelEnd ?? (() => undefined),
       onInlineLabelSubmit: onInlineLabelSubmit ?? (() => undefined),
+      onInlineLabelTab: onInlineLabelTab ?? (() => undefined),
       connectable: tool === 'connection',
     }),
     [
@@ -89,6 +92,7 @@ export const CanvasBoard = ({
       onInlineLabelChange,
       onInlineLabelEnd,
       onInlineLabelSubmit,
+      onInlineLabelTab,
       tool,
     ],
   );

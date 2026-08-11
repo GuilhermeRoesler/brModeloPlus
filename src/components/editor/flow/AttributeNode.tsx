@@ -14,6 +14,7 @@ export const AttributeNode = ({
     onInlineLabelChange,
     onInlineLabelEnd,
     onInlineLabelSubmit,
+    onInlineLabelTab,
     connectable,
   } = useDiagramFlow();
 
@@ -67,6 +68,10 @@ export const AttributeNode = ({
               e.preventDefault();
               e.stopPropagation();
               onInlineLabelSubmit(id);
+            } else if (e.key === 'Tab') {
+              e.preventDefault();
+              e.stopPropagation();
+              onInlineLabelTab(id);
             } else if (e.key === 'Escape') {
               e.preventDefault();
               e.stopPropagation();

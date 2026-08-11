@@ -99,9 +99,11 @@ Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` + `u
 - **Auto layout** (`lib/autoLayout.ts`): **ELK.js stress** nos nós estruturais; atributos Heuser reposicionados em cascata sob o dono
 - **`commitDiagram`**: async; `{ fit?, layout? }` — Enter/conexões usam `layout: false`
 - **Enter (conceitual):** cria atributo ligado **abaixo** do dono (cascata Heuser), edição inline; Esc / blur finaliza
+- **Tab (conceitual):** cadeia estrutural — entidade selecionada → relacionamento à direita já conectado (edição inline); Tab de novo → nova entidade interligada; pode repetir a cadeia
 - **Viewport / fit:** `fitView` via `fitRequestId`
 
 Helpers Heuser em `lib/diagramFlow.ts`: `heuserAttributePosition`, `layoutHeuserAttributes`, `linkedAttributesOf`.
+Posição da cadeia Tab: `positionRightOf`.
 
 ## Como alterar (receitas)
 
@@ -120,6 +122,7 @@ Helpers Heuser em `lib/diagramFlow.ts`: `heuserAttributePosition`, `layoutHeuser
 1. Algoritmo em `lib/autoLayout.ts` (ELK stress nos estruturais + cascata Heuser nos atributos)
 2. Chamada via `commitDiagram` / toolbar
 3. Atributos rápidos (Enter): `heuserAttributePosition` + `layoutHeuserAttributes` sob o dono + edge + `layout: false`
+4. Cadeia Tab (entidade ↔ relacionamento): `positionRightOf` + edge + `layout: false` + edição inline
 
 ## Convenções de código
 

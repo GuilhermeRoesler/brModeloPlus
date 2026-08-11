@@ -1,5 +1,8 @@
 import { NODE_TYPES, type ErEdge, type ErNode, type ErNodeData, type NodeType } from '../types';
-import { getNodeSize } from './nodeGeometry';
+import { getNodeCenter, getNodeSize, topLeftFromCenter } from './nodeGeometry';
+
+/** Espaço horizontal entre nós estruturais criados em cadeia (Tab). */
+const TAB_CHAIN_GAP_X = 80;
 
 const STRUCTURAL = new Set<string>([
   NODE_TYPES.ENTITY,
@@ -117,6 +120,27 @@ export const layoutHeuserAttributes = (
     if (!p) return n;
     return { ...n, position: p };
   });
+};
+
+/**
+ * Top-left à direita de `from`, alinhado pelo centro vertical —
+ * usado pela cadeia Tab (entidade → relacionamento → entidade).
+ */
+export const positionRightOf = (
+  from: ErNode,
+  nextType: NodeType,
+  nextData?: Partial<ErNodeData>,
+): { x: number; y: number } => {
+  const fromSize = getNodeSize(from);
+  const nextSize = getNodeSize({ type: nextType, data: nextData });
+  const center = getNodeCenter(from);
+  return topLeftFromCenter(
+    {
+      x: center.x + fromSize.width / 2 + TAB_CHAIN_GAP_X + nextSize.width / 2,
+      y: center.y,
+    },
+    { type: nextType, data: nextData },
+  );
 };
 
 export const createErNode = (opts: {

@@ -5,11 +5,61 @@ import { NodeHandles } from './NodeHandles';
 
 const diamondClip = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
 
+const InlineLabelInput = ({
+  id,
+  value,
+  placeholder,
+  className,
+}: {
+  id: string;
+  value: string;
+  placeholder: string;
+  className: string;
+}) => {
+  const {
+    onInlineLabelChange,
+    onInlineLabelEnd,
+    onInlineLabelSubmit,
+    onInlineLabelTab,
+  } = useDiagramFlow();
+
+  return (
+    <input
+      data-inline-label-edit=""
+      autoFocus
+      value={value}
+      placeholder={placeholder}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => onInlineLabelChange(id, e.target.value)}
+      onBlur={() => onInlineLabelEnd(id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          onInlineLabelSubmit(id);
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          e.stopPropagation();
+          onInlineLabelTab(id);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          onInlineLabelEnd(id);
+        }
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+      className={className}
+    />
+  );
+};
+
 export const EntityNode = ({
+  id,
   data,
   selected,
 }: NodeProps & { data: ErNodeData }) => {
-  const { connectable } = useDiagramFlow();
+  const { editingLabelId, connectable } = useDiagramFlow();
+  const isEditing = editingLabelId === id;
 
   return (
     <div
@@ -26,19 +76,30 @@ export const EntityNode = ({
             : 'border-slate-800 bg-white shadow-sm'
         }`}
       >
-        <span className="text-sm font-semibold text-slate-800 leading-tight select-none">
-          {data.label}
-        </span>
+        {isEditing ? (
+          <InlineLabelInput
+            id={id}
+            value={data.label}
+            placeholder="Entidade"
+            className="w-full h-7 px-1 text-sm font-semibold text-slate-800 bg-white border border-indigo-400 rounded shadow-sm outline-none focus:ring-2 focus:ring-indigo-400 text-center z-20"
+          />
+        ) : (
+          <span className="text-sm font-semibold text-slate-800 leading-tight select-none">
+            {data.label}
+          </span>
+        )}
       </div>
     </div>
   );
 };
 
 export const RelationshipNode = ({
+  id,
   data,
   selected,
 }: NodeProps & { data: ErNodeData }) => {
-  const { connectable } = useDiagramFlow();
+  const { editingLabelId, connectable } = useDiagramFlow();
+  const isEditing = editingLabelId === id;
   const border = selected ? 'bg-indigo-500' : 'bg-slate-800';
   const fill = selected ? 'bg-indigo-50' : 'bg-white';
 
@@ -66,8 +127,19 @@ export const RelationshipNode = ({
           />
         </div>
       )}
-      <div className="absolute inset-0 flex items-center justify-center text-center pointer-events-none z-[1]">
-        <span className="text-xs font-bold text-slate-800 select-none">{data.label}</span>
+      <div className="absolute inset-0 flex items-center justify-center text-center z-[1]">
+        {isEditing ? (
+          <InlineLabelInput
+            id={id}
+            value={data.label}
+            placeholder="Rel"
+            className="w-[72px] h-6 px-1 text-xs font-bold text-slate-800 bg-white border border-indigo-400 rounded shadow-sm outline-none focus:ring-2 focus:ring-indigo-400 text-center pointer-events-auto"
+          />
+        ) : (
+          <span className="text-xs font-bold text-slate-800 select-none pointer-events-none">
+            {data.label}
+          </span>
+        )}
       </div>
     </div>
   );

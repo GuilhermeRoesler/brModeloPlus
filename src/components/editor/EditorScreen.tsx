@@ -23,6 +23,7 @@ import {
   normalizeErEdges,
   normalizeErNodes,
   patchNodeData,
+  positionRightOf,
 } from '../../lib/diagramFlow';
 import { topLeftFromCenter } from '../../lib/nodeGeometry';
 import { generateId } from '../../lib/utils';
@@ -294,6 +295,71 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     setEditingLabelId(attrId);
   };
 
+  /** Tab: entidade → relacionamento à direita, já conectado, edição inline. */
+  const createLinkedRelationship = (entityId: string) => {
+    const entity = nodesRef.current.find((n) => n.id === entityId);
+    if (!entity || entity.type !== NODE_TYPES.ENTITY) return;
+
+    const relId = generateId();
+    const newRel = createErNode({
+      id: relId,
+      type: NODE_TYPES.RELATIONSHIP,
+      position: positionRightOf(entity, NODE_TYPES.RELATIONSHIP),
+      label: '',
+    });
+    newRel.selected = true;
+
+    const newEdge = createErEdge({
+      id: generateId(),
+      source: entityId,
+      target: relId,
+    });
+
+    const cleared = nodesRef.current.map((n) => ({ ...n, selected: false }));
+    const clearedEdges = edgesRef.current.map((e) => ({ ...e, selected: false }));
+
+    void commitDiagram([...cleared, newRel], [...clearedEdges, newEdge], {
+      fit: false,
+      layout: false,
+    });
+    setTool('select');
+    editingLabelIdRef.current = relId;
+    setEditingLabelId(relId);
+  };
+
+  /** Tab: relacionamento → entidade à direita, já interligada, edição inline. */
+  const createLinkedEntity = (relationshipId: string) => {
+    const rel = nodesRef.current.find((n) => n.id === relationshipId);
+    if (!rel || rel.type !== NODE_TYPES.RELATIONSHIP) return;
+
+    const entityId = generateId();
+    const newEntity = createErNode({
+      id: entityId,
+      type: NODE_TYPES.ENTITY,
+      position: positionRightOf(rel, NODE_TYPES.ENTITY, { isWeak: false }),
+      label: '',
+      data: { isWeak: false },
+    });
+    newEntity.selected = true;
+
+    const newEdge = createErEdge({
+      id: generateId(),
+      source: relationshipId,
+      target: entityId,
+    });
+
+    const cleared = nodesRef.current.map((n) => ({ ...n, selected: false }));
+    const clearedEdges = edgesRef.current.map((e) => ({ ...e, selected: false }));
+
+    void commitDiagram([...cleared, newEntity], [...clearedEdges, newEdge], {
+      fit: false,
+      layout: false,
+    });
+    setTool('select');
+    editingLabelIdRef.current = entityId;
+    setEditingLabelId(entityId);
+  };
+
   const resolveOwnerForEnter = (): string | null => {
     const ids = selectedIdsRef.current;
     if (ids.length !== 1) return null;
@@ -315,10 +381,32 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     return null;
   };
 
+  const resolveTabChainSource = (): ErNode | null => {
+    const ids = selectedIdsRef.current;
+    if (ids.length !== 1) return null;
+    const selected = nodesRef.current.find((n) => n.id === ids[0]);
+    if (!selected) return null;
+    if (
+      selected.type === NODE_TYPES.ENTITY ||
+      selected.type === NODE_TYPES.RELATIONSHIP
+    ) {
+      return selected;
+    }
+    return null;
+  };
+
+  const defaultLabelFor = (type: string | undefined) => {
+    if (type === NODE_TYPES.ENTITY) return 'Entidade';
+    if (type === NODE_TYPES.RELATIONSHIP) return 'Rel';
+    return 'Atributo';
+  };
+
   const finalizeLabelIfEmpty = (id: string) => {
     const node = nodesRef.current.find((n) => n.id === id);
     if (!node || node.data.label.trim()) return;
-    const updated = patchNodeData(nodesRef.current, id, { label: 'Atributo' });
+    const updated = patchNodeData(nodesRef.current, id, {
+      label: defaultLabelFor(node.type),
+    });
     nodesRef.current = updated;
     setNodes(updated);
   };
@@ -337,15 +425,44 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     persist();
   };
 
+  /** Enter na edição: atributo → próximo atributo; demais → só finaliza. */
   const handleInlineLabelSubmit = (id: string) => {
     finalizeLabelIfEmpty(id);
     persist();
+    const node = nodesRef.current.find((n) => n.id === id);
+    if (node?.type !== NODE_TYPES.ATTRIBUTE) {
+      editingLabelIdRef.current = null;
+      setEditingLabelId(null);
+      return;
+    }
     const ownerId = findAttributeOwnerId(
       id,
       nodesRef.current,
       edgesRef.current,
     );
     if (ownerId) createLinkedAttribute(ownerId);
+  };
+
+  /** Tab na edição: atributo finaliza; entidade/rel continua a cadeia. */
+  const handleInlineLabelTab = (id: string) => {
+    finalizeLabelIfEmpty(id);
+    persist();
+    const node = nodesRef.current.find((n) => n.id === id);
+    if (!node) {
+      editingLabelIdRef.current = null;
+      setEditingLabelId(null);
+      return;
+    }
+    if (node.type === NODE_TYPES.ENTITY) {
+      createLinkedRelationship(id);
+      return;
+    }
+    if (node.type === NODE_TYPES.RELATIONSHIP) {
+      createLinkedEntity(id);
+      return;
+    }
+    editingLabelIdRef.current = null;
+    setEditingLabelId(null);
   };
 
   useEffect(() => {
@@ -356,8 +473,6 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
         handleInlineLabelEnd(editingLabelIdRef.current);
         return;
       }
-
-      if (e.key !== 'Enter') return;
 
       const target = e.target as HTMLElement | null;
       if (target?.closest?.('[data-inline-label-edit]')) return;
@@ -371,10 +486,24 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
         return;
       }
 
-      const ownerId = resolveOwnerForEnter();
-      if (!ownerId) return;
-      e.preventDefault();
-      createLinkedAttribute(ownerId);
+      if (e.key === 'Enter') {
+        const ownerId = resolveOwnerForEnter();
+        if (!ownerId) return;
+        e.preventDefault();
+        createLinkedAttribute(ownerId);
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const source = resolveTabChainSource();
+        if (!source) return;
+        e.preventDefault();
+        if (source.type === NODE_TYPES.ENTITY) {
+          createLinkedRelationship(source.id);
+        } else if (source.type === NODE_TYPES.RELATIONSHIP) {
+          createLinkedEntity(source.id);
+        }
+      }
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -480,6 +609,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
           onInlineLabelChange={handleInlineLabelChange}
           onInlineLabelEnd={handleInlineLabelEnd}
           onInlineLabelSubmit={handleInlineLabelSubmit}
+          onInlineLabelTab={handleInlineLabelTab}
           fitRequestId={fitRequestId}
         />
 

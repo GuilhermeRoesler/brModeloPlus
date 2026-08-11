@@ -18,6 +18,7 @@
   - **Auto layout** (**ELK.js stress** nos nós estruturais; atributos Heuser em cascata sob o dono).
   - **Conectar:** arrastar handle→handle (modo Conectar).
   - **Enter** (modo conceitual): cria atributo ligado abaixo do dono com edição inline do nome.
+  - **Tab** (modo conceitual): com entidade selecionada, cria relacionamento já conectado à direita (edição inline); Tab de novo cria a próxima entidade interligada.
 - **Geração de SQL:** `CREATE TABLE` a partir do modelo físico.
 - **Projetos locais:** criar, listar e excluir diagramas (`localStorage`).
 
