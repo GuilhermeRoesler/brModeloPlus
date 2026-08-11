@@ -91,46 +91,60 @@ const renderNode = (node: DiagramNode, isSelected: boolean) => {
           </foreignObject>
         </g>
       );
-    case NODE_TYPES.ATTRIBUTE:
+    case NODE_TYPES.ATTRIBUTE: {
+      const r = 10;
+      const isKey = node.attrType === 'key';
+      const isDerived = node.attrType === 'derived';
+      const isMulti = node.attrType === 'multivalued';
+      const circleFill = isKey
+        ? isSelected
+          ? 'fill-indigo-500'
+          : 'fill-slate-800'
+        : fillClass;
+      const labelWidth = Math.max(48, node.label.length * 7 + 8);
+
       return (
         <g transform={`translate(${node.x}, ${node.y})`}>
-          <ellipse
+          <rect
+            x={-r - 4}
+            y={-r - 6}
+            width={r + 8 + labelWidth}
+            height={r * 2 + 12}
+            fill="transparent"
+          />
+          <circle
             cx="0"
             cy="0"
-            rx="50"
-            ry="25"
-            className={`${fillClass} ${strokeClass}`}
+            r={r}
+            className={`${circleFill} ${strokeClass} transition-colors`}
             style={{ filter }}
-            strokeDasharray={node.attrType === 'derived' ? '4' : '0'}
+            strokeDasharray={isDerived ? '3 2' : undefined}
           />
-          {node.attrType === 'multivalued' && (
-            <ellipse
+          {isMulti && (
+            <circle
               cx="0"
               cy="0"
-              rx="45"
-              ry="20"
+              r={r - 3.5}
               fill="none"
               stroke="currentColor"
-              strokeWidth="1"
-              className="text-slate-800"
+              strokeWidth="1.5"
+              className={isSelected ? 'text-indigo-500' : 'text-slate-800'}
+              strokeDasharray={isDerived ? '3 2' : undefined}
             />
           )}
-          <foreignObject x="-45" y="-20" width="90" height="40">
-            <div className="w-full h-full flex items-center justify-center text-center p-1">
-              <span
-                className={`text-xs text-slate-800 select-none ${
-                  node.attrType === 'key' ? 'underline font-bold' : ''
-                }`}
-              >
-                {node.attrType === 'key' && (
-                  <span className="w-2 h-2 bg-black rounded-full inline-block mr-1" />
-                )}
-                {node.label}
-              </span>
-            </div>
-          </foreignObject>
+          <text
+            x={r + 6}
+            y="0"
+            dy="0.35em"
+            className={`text-xs select-none pointer-events-none ${
+              isKey ? 'font-bold fill-slate-900' : 'fill-slate-800'
+            }`}
+          >
+            {node.label}
+          </text>
         </g>
       );
+    }
     case NODE_TYPES.TABLE: {
       const rowH = 24;
       const headH = 32;
