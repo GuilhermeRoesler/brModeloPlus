@@ -89,6 +89,28 @@ O projeto estará acessível em `http://localhost:5173`.
 
 ---
 
+## 📁 Estrutura do Código
+
+```
+src/
+  App.tsx                 # Roteador (login → dashboard → editor)
+  config/                 # Firebase, flags e constantes de UI
+  types/                  # Tipos do domínio (nós, conexões, projetos)
+  lib/                    # Utilitários (SQL, localStorage, helpers)
+  services/               # Persistência (projetos e salas: local ou Firestore)
+  hooks/                  # useAuth, useProjects
+  components/
+    auth/                 # LoginScreen
+    dashboard/            # DashboardScreen
+    editor/               # Editor, canvas, toolbar, painéis
+    ui/                   # Componentes reutilizáveis
+```
+
+- **Modo nuvem:** com `VITE_FIREBASE_API_KEY`, auth + sync + colaboração via Firebase.
+- **Modo local:** sem API key, projetos e salas no `localStorage`; colaboração desabilitada.
+
+---
+
 ## 📜 Scripts Disponíveis
 
 - `npm run dev`: Inicia o servidor de desenvolvimento.
