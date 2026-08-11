@@ -4,12 +4,31 @@ description: >-
   Spec and contribution guide for BrModeloPlus — React/Vite ER diagramming app
   with optional Firebase realtime collaboration and localStorage fallback.
   Use when editing, extending, refactoring, or debugging this codebase
-  (editor, dashboard, auth, Firebase, local mode, diagram nodes, SQL generation).
+  (editor, dashboard, auth, Firebase, local mode, diagram nodes, SQL generation,
+  auto layout, keyboard shortcuts). Always keep this skill and README.md in sync
+  with product/architecture changes.
 ---
 
 # BrModeloPlus — Spec do Projeto
 
 Ferramenta web de modelagem de dados (conceitual / lógico / físico), inspirada no brModelo. Stack: React 19 + TypeScript + Vite + Tailwind v4 + Lucide; Firebase opcional (Auth + Firestore).
+
+## Documentação viva (obrigatório)
+
+Esta skill e o `README.md` da raiz **são a spec viva** do produto. Em **toda** mudança que altere comportamento, arquitetura, domínio, UX do editor, modos (local/nuvem) ou estrutura de pastas:
+
+1. Atualizar **esta skill** (`.cursor/skills/brmodelo-plus/SKILL.md`) no mesmo PR/tarefa
+2. Atualizar o **`README.md`** quando a mudança for visível ao usuário, afete setup/contribuição, ou mude a lista de funcionalidades / estrutura
+3. Não deixar docs “para depois” — a tarefa só está completa com código **e** docs alinhados
+
+O que tipicamente exige update:
+
+| Mudança | Skill | README |
+|---------|-------|--------|
+| Novo atalho, nó, tool, painel, layout | Sim | Se for feature de usuário |
+| Camada / pasta / regra de arquitetura | Sim | Seção Estrutura |
+| Auth / Firebase / modo local | Sim | Setup + notas de modo |
+| Só refactor interno sem mudança de comportamento | Só se a receita/caminho mudar | Não |
 
 ## Fluxo da aplicação
 
@@ -26,7 +45,7 @@ src/
   App.tsx                 # só roteamento entre telas
   config/                 # Firebase, flags, constantes de UI
   types/                  # domínio tipado
-  lib/                    # utils puros (SQL, localStorage, ids)
+  lib/                    # utils puros (SQL, localStorage, ids, autoLayout, viewport)
   services/               # persistência (local OU Firestore)
   hooks/                  # estado reutilizável (auth, projects)
   components/
@@ -73,9 +92,21 @@ Constantes em `src/types/index.ts`:
 - **Node types:** `entity` | `relationship` | `attribute` | `table`
 - **Tools:** `select` | `entity` | `relationship` | `attribute` | `table` | `connection`
 
-No modo conceitual: entidades, relacionamentos, atributos.  
+No modo conceitual: entidades, relacionamentos, atributos (notação **Heuser**: círculo pequeno + rótulo ao lado; chave = círculo preenchido; derivado = tracejado; multivalorado = círculo duplo).  
 Nos modos lógico/físico: tabelas + colunas (PK/FK).  
 SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
+
+### Editor — comportamentos atuais
+
+Orquestração em `components/editor/EditorScreen.tsx`; desenho em `CanvasBoard.tsx`.
+
+- **Seleção / pan / zoom / box select** (Shift + arrastar)
+- **Conexões** via tool `connection`
+- **Auto layout** (`lib/autoLayout.ts`): force-directed nos nós estruturais; atributos em colunas L/R do dono; botão na `Toolbar`
+- **`commitDiagram`**: por padrão aplica `autoLayout` + fit; opções `{ fit?, layout? }` — criação rápida de atributos usa `layout: false` para não rearranjar o diagrama
+- **Enter (modo conceitual):** com entidade, relacionamento ou atributo (já ligado) selecionado → cria atributo ligado ao dono, seleciona e abre **edição inline** do nome; Enter de novo no input cria o próximo; Esc / clique fora finaliza (rótulo vazio → `"Atributo"`)
+- **Rótulo do atributo:** à direita do círculo se o atributo está à direita do dono; à esquerda (`textAnchor="end"`) se está à esquerda do dono
+- **Viewport:** `lib/viewport.ts` (`computeFitView`) após layouts que pedem `fit`
 
 ## Como alterar (receitas)
 
@@ -86,6 +117,20 @@ SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
 3. Adicionar botão em `Toolbar.tsx` (respeitar mode)
 4. Campos em `PropertiesPanel.tsx`
 5. Factory em `EditorScreen` (`addNode`)
+6. Atualizar skill + README (documentação viva)
+
+### Atalho / UX do canvas
+
+1. Handler em `EditorScreen` (preferir `window` + refs para não stale-close)
+2. Se for edição visual de nó → estado + props em `CanvasBoard`
+3. Não disparar atalhos com foco em `INPUT`/`TEXTAREA`/`SELECT` (exceto inputs do próprio atalho, ex. `data-inline-label-edit`)
+4. Documentar o atalho nesta skill e no README se for feature de usuário
+
+### Auto layout / posicionamento
+
+1. Algoritmo puro em `lib/autoLayout.ts` (sem React)
+2. Chamada via `commitDiagram` / botão da toolbar
+3. Atributos novos “rápidos” (Enter): posicionar manualmente junto ao dono e `layout: false`
 
 ### Nova tela / fluxo de navegação
 
@@ -120,6 +165,7 @@ SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
 - Tailwind v4; ícones Lucide
 - Preferir componentes focados; extrair se um arquivo crescer demais
 - Após mudanças estruturais: `npm run build` (tsc + vite)
+- **Docs no mesmo passo:** skill + README quando couber (ver “Documentação viva”)
 
 ## O que evitar
 
@@ -129,6 +175,7 @@ SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
 - Feature flags ad-hoc espalhadas — usar `config/firebase.ts`
 - Alterar paths Firestore sem plano de migração
 - Adicionar React Router sem necessidade clara (roteamento atual é intencional e mínimo)
+- Entregar feature/comportamento novo **sem** atualizar esta skill (e o README quando aplicável)
 
 ## Checklist rápido antes de PR
 
@@ -137,3 +184,5 @@ SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
 - [ ] Paridade local + Firebase (se tocar persistência)
 - [ ] Collab só ativa com API key
 - [ ] `npm run build` ok
+- [ ] **Skill atualizada** (comportamento / arquitetura / receitas)
+- [ ] **README atualizado** (se feature, setup ou estrutura mudaram)

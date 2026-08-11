@@ -1,67 +1,53 @@
-# BrModeloPlus 🗂️
+# BrModeloPlus
 
-> Modelagem de dados moderna, colaborativa e na nuvem.
+> Modelagem de dados moderna — conceitual, lógico e físico — no navegador, com modo local ou colaboração na nuvem.
 
-**BrModeloPlus** é uma ferramenta web para modelagem de banco de dados, inspirada no clássico brModelo. Desenvolvida com tecnologias modernas, ela permite criar modelos conceituais, lógicos e físicos diretamente no navegador, com suporte a colaboração em tempo real e armazenamento na nuvem.
+**BrModeloPlus** é uma ferramenta web de modelagem de banco de dados, inspirada no clássico brModelo. Permite criar diagramas ER no navegador, com persistência local (`localStorage`) ou Firebase (auth + sync + colaboração em tempo real).
 
 ![](public/demo.png)
 
-## ✨ Funcionalidades
+## Funcionalidades
 
-O projeto oferece um conjunto robusto de ferramentas para estudantes e profissionais de banco de dados:
+- **3 modos de modelagem**
+  - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (círculo + rótulo; chave / derivado / multivalorado).
+  - **Lógico:** estruturas relacionais.
+  - **Físico:** tabelas, colunas, tipos, PK/FK e geração de SQL DDL.
+- **Editor**
+  - Drag-and-drop, zoom, pan, seleção múltipla (Shift + arrastar).
+  - Painel de propriedades.
+  - **Auto layout** (force-directed + atributos em colunas ao lado do dono).
+  - **Enter** (modo conceitual): cria atributo já ligado à entidade/relacionamento (ou irmão do atributo selecionado), com edição inline do nome; Enter de novo cria o próximo.
+  - Rótulo do atributo à esquerda ou à direita do círculo conforme o lado do dono.
+- **Colaboração em tempo real** (com Firebase): cursores remotos e sync do diagrama.
+- **Geração de SQL:** `CREATE TABLE` a partir do modelo físico.
+- **Auth híbrida:** Google, anônimo, ou guest local sem API key.
+- **Projetos:** criar, listar e excluir diagramas (nuvem ou `localStorage`).
 
-- **3 Modos de Modelagem:**
-- **Conceitual:** Criação de Entidades (incluindo fracas), Relacionamentos e Atributos (simples, chave, derivado, multivalorado).
-- **Lógico:** Conversão e ajuste para estruturas relacionais.
-- **Físico:** Definição de tabelas, colunas, tipos de dados, chaves primárias (PK) e estrangeiras (FK).
-
-- **Colaboração em Tempo Real:** Veja cursores de outros usuários e atualizações no diagrama instantaneamente (powered by Firestore).
-- **Geração de SQL:** Gera scripts DDL (`CREATE TABLE`) automaticamente a partir do modelo físico.
-- **Interface Intuitiva:**
-- Drag-and-drop de elementos.
-- Zoom e Pan (navegação pelo canvas).
-- Painel de propriedades dinâmico.
-
-- **Autenticação Híbrida:** Login via Google ou Acesso Anônimo (Convidado).
-- **Gerenciamento de Projetos:** Crie, liste e exclua seus diagramas salvos na nuvem.
-
----
-
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias
 
 - **Frontend:** [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool:** [Vite](https://vitejs.dev/)
-- **Estilização:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Ícones:** [Lucide React](https://lucide.dev/)
-- **Backend as a Service (BaaS):** [Firebase](https://firebase.google.com/)
-- **Authentication:** Google Auth & Anonymous.
-- **Firestore:** Banco de dados NoSQL para sincronização dos diagramas em tempo real.
+- **Build:** [Vite](https://vitejs.dev/)
+- **UI:** [Tailwind CSS v4](https://tailwindcss.com/), [Lucide](https://lucide.dev/)
+- **BaaS (opcional):** [Firebase](https://firebase.google.com/) Auth + Firestore
 
----
-
-## 🚀 Como Executar o Projeto
+## Como executar
 
 ### Pré-requisitos
 
-- Node.js (versão 18 ou superior)
-- NPM ou Yarn
+- Node.js 18+
+- npm ou yarn
 
-### 1. Clonar o repositório
+### 1. Clonar e instalar
 
 ```bash
 git clone https://github.com/seu-usuario/brmodeloplus.git
 cd brmodeloplus
-```
-
-### 2. Instalar dependências
-
-```bash
 npm install
 ```
 
-### 3. Configurar o Firebase
+### 2. Firebase (opcional)
 
-Crie um arquivo `.env` na raiz do projeto com as credenciais do seu projeto Firebase (você pode copiar o exemplo abaixo):
+Crie `.env` na raiz:
 
 ```env
 VITE_FIREBASE_API_KEY=sua_api_key
@@ -72,31 +58,26 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id
 VITE_FIREBASE_APP_ID=seu_app_id
 ```
 
-> **Nota:** Sem `VITE_FIREBASE_API_KEY`, o app sobe em **modo local**: modelagem e projetos no `localStorage`, com colaboração em tempo real desabilitada. As demais variáveis Firebase só são necessárias com a API key configurada.
+> Sem `VITE_FIREBASE_API_KEY`, o app sobe em **modo local**: projetos e salas no `localStorage`; colaboração desabilitada. As demais variáveis só são necessárias com a API key.
 
-> No console do Firebase, certifique-se de habilitar:
->
-> 1. **Authentication:** Provedores "Google" e "Anônimo".
-> 2. **Firestore Database:** Crie o banco e ajuste as regras de segurança para permitir leitura/escrita (para desenvolvimento).
+> No console Firebase (modo nuvem): habilite Authentication (Google + Anônimo) e Firestore com regras adequadas ao ambiente.
 
-### 4. Rodar o servidor de desenvolvimento
+### 3. Dev server
 
 ```bash
 npm run dev
 ```
 
-O projeto estará acessível em `http://localhost:5173`.
+Acesse `http://localhost:5173`.
 
----
-
-## 📁 Estrutura do Código
+## Estrutura do código
 
 ```
 src/
   App.tsx                 # Roteador (login → dashboard → editor)
   config/                 # Firebase, flags e constantes de UI
   types/                  # Tipos do domínio (nós, conexões, projetos)
-  lib/                    # Utilitários (SQL, localStorage, helpers)
+  lib/                    # Utils puros (SQL, localStorage, autoLayout, viewport)
   services/               # Persistência (projetos e salas: local ou Firestore)
   hooks/                  # useAuth, useProjects
   components/
@@ -106,36 +87,29 @@ src/
     ui/                   # Componentes reutilizáveis
 ```
 
-- **Modo nuvem:** com `VITE_FIREBASE_API_KEY`, auth + sync + colaboração via Firebase.
-- **Modo local:** sem API key, projetos e salas no `localStorage`; colaboração desabilitada.
+Spec detalhada para agentes e contribuidores: [`.cursor/skills/brmodelo-plus/SKILL.md`](.cursor/skills/brmodelo-plus/SKILL.md).
+
+## Scripts
+
+- `npm run dev` — servidor de desenvolvimento
+- `npm run build` — build de produção (`tsc` + Vite)
+- `npm run lint` — ESLint
+- `npm run preview` — preview do build
+
+## Contribuição
+
+Contribuições são bem-vindas (Issues e Pull Requests).
+
+1. Fork + branch (`git checkout -b feature/sua-feature`)
+2. Implemente a mudança na **camada correta** (ver skill)
+3. **Documentação viva:** atualize `.cursor/skills/brmodelo-plus/SKILL.md` e este `README.md` sempre que o comportamento, a arquitetura, o setup ou as funcionalidades mudarem — no mesmo PR
+4. `npm run build` ok
+5. Abra o Pull Request
+
+## Licença
+
+MIT — veja o arquivo `LICENSE` no repositório.
 
 ---
 
-## 📜 Scripts Disponíveis
-
-- `npm run dev`: Inicia o servidor de desenvolvimento.
-- `npm run build`: Compila o projeto para produção (via TSC e Vite).
-- `npm run lint`: Verifica problemas no código com ESLint.
-- `npm run preview`: Visualiza o build de produção localmente.
-
----
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Sinta-se à vontade para abrir **Issues** ou enviar **Pull Requests**.
-
-1. Faça um Fork do projeto.
-2. Crie uma Branch para sua Feature (`git checkout -b feature/IncrivelFeature`).
-3. Faça o Commit (`git commit -m 'Add some IncrivelFeature'`).
-4. Faça o Push (`git push origin feature/IncrivelFeature`).
-5. Abra um Pull Request.
-
----
-
-## 📝 Licença
-
-Este projeto está sob a licença MIT - veja o arquivo [LICENSE](https://www.google.com/search?q=LICENSE) para detalhes.
-
----
-
-Feito com ❤️ por [Guilherme Roesler](https://www.google.com/search?q=https://github.com/guilhermeroesler)
+Feito por [Guilherme Roesler](https://github.com/guilhermeroesler)
