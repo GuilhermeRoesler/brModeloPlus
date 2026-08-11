@@ -55,6 +55,76 @@ export const linkedAttributesOf = (
   return attrs;
 };
 
+/** Atributos diretos + compostos (BFS pela árvore de atributos do dono). */
+export const attributeSubtreeOf = (
+  ownerId: string,
+  nodes: ErNode[],
+  edges: ErEdge[],
+): ErNode[] => {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const result: ErNode[] = [];
+  const seen = new Set<string>();
+  const queue = linkedAttributesOf(ownerId, nodes, edges).map((a) => a.id);
+
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const node = byId.get(id);
+    if (!node || node.type !== NODE_TYPES.ATTRIBUTE) continue;
+    result.push(node);
+    for (const child of linkedAttributesOf(id, nodes, edges)) {
+      if (!seen.has(child.id)) queue.push(child.id);
+    }
+  }
+  return result;
+};
+
+/**
+ * Após mover entidade/relacionamento, desloca a subárvore de atributos
+ * pelo mesmo delta. Ignora ids que já vieram no lote de drag (multi-seleção).
+ */
+export const followStructuralDrags = (
+  before: ErNode[],
+  after: ErNode[],
+  edges: ErEdge[],
+  alreadyMovedIds: ReadonlySet<string>,
+): ErNode[] => {
+  const beforeById = new Map(before.map((n) => [n.id, n]));
+  const attrDelta = new Map<string, { dx: number; dy: number }>();
+
+  for (const node of after) {
+    if (
+      node.type !== NODE_TYPES.ENTITY &&
+      node.type !== NODE_TYPES.RELATIONSHIP
+    ) {
+      continue;
+    }
+    if (!alreadyMovedIds.has(node.id)) continue;
+    const prev = beforeById.get(node.id);
+    if (!prev) continue;
+    const dx = node.position.x - prev.position.x;
+    const dy = node.position.y - prev.position.y;
+    if (dx === 0 && dy === 0) continue;
+
+    for (const attr of attributeSubtreeOf(node.id, after, edges)) {
+      if (alreadyMovedIds.has(attr.id) || attrDelta.has(attr.id)) continue;
+      attrDelta.set(attr.id, { dx, dy });
+    }
+  }
+
+  if (attrDelta.size === 0) return after;
+
+  return after.map((n) => {
+    const d = attrDelta.get(n.id);
+    if (!d) return n;
+    return {
+      ...n,
+      position: { x: n.position.x + d.dx, y: n.position.y + d.dy },
+    };
+  });
+};
+
 const ATTR_NODE = 20;
 const HEUSER_BASE_GAP = 28;
 const HEUSER_STEP_Y = 28;

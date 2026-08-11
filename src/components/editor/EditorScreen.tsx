@@ -17,6 +17,7 @@ import {
   createErEdge,
   createErNode,
   findAttributeOwnerId,
+  followStructuralDrags,
   heuserAttributePosition,
   layoutHeuserAttributes,
   linkedAttributesOf,
@@ -179,8 +180,16 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
           (c.type === 'position' && c.dragging === false),
       );
 
+      const movedIds = new Set(
+        filtered.filter((c) => c.type === 'position').map((c) => c.id),
+      );
+
       setNodes((nds) => {
-        const next = applyNodeChanges(filtered, nds);
+        const applied = applyNodeChanges(filtered, nds);
+        const next =
+          movedIds.size > 0
+            ? followStructuralDrags(nds, applied, edgesRef.current, movedIds)
+            : applied;
         nodesRef.current = next;
         if (shouldPersist) {
           queueMicrotask(() => persist(next, edgesRef.current));

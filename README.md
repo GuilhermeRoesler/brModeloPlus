@@ -13,7 +13,7 @@
   - **Lógico:** estruturas relacionais.
   - **Físico:** tabelas, colunas, tipos, PK/FK e geração de SQL DDL.
 - **Editor**
-  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**.
+  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto.
   - Painel de propriedades.
   - **Auto layout** (**ELK.js stress** nos nós estruturais; atributos Heuser em cascata sob o dono).
   - **Conectar:** arrastar handle→handle (modo Conectar).

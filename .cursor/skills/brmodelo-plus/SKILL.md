@@ -95,6 +95,7 @@ SQL DDL: `src/lib/sql.ts` a partir de nós `table`.
 Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` + `useNodesState` / `useEdgesState`); canvas em `CanvasBoard.tsx` (wrapper fino do `<ReactFlow>`).
 
 - **Seleção / pan / zoom / box select / Delete·Backspace** — nativos do React Flow; scroll = zoom; seleção lida de `node.selected` / `edge.selected`
+- **Drag estrutural** — ao mover entidade/relacionamento, atributos ligados (incl. compostos) acompanham o mesmo delta (`followStructuralDrags`); ids já no lote de drag não são deslocados de novo (multi-seleção)
 - **Conexões** — tool `connection`: handle→handle (`ConnectionMode.Loose`)
 - **Auto layout** (`lib/autoLayout.ts`): **ELK.js stress** nos nós estruturais; atributos Heuser reposicionados em cascata sob o dono
 - **`commitDiagram`**: async; `{ fit?, layout? }` — Enter/conexões usam `layout: false`
@@ -102,7 +103,7 @@ Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` + `u
 - **Tab (conceitual):** cadeia estrutural — entidade selecionada → relacionamento à direita já conectado (edição inline); Tab de novo → nova entidade interligada; pode repetir a cadeia
 - **Viewport / fit:** `fitView` via `fitRequestId`
 
-Helpers Heuser em `lib/diagramFlow.ts`: `heuserAttributePosition`, `layoutHeuserAttributes`, `linkedAttributesOf`.
+Helpers Heuser em `lib/diagramFlow.ts`: `heuserAttributePosition`, `layoutHeuserAttributes`, `linkedAttributesOf`, `attributeSubtreeOf`, `followStructuralDrags`.
 Posição da cadeia Tab: `positionRightOf`.
 
 ## Como alterar (receitas)
