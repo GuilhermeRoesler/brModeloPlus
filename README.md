@@ -54,6 +54,16 @@ npm run dev
 
 Acesse `http://localhost:5173`. O app abre direto no dashboard (modo local). Não é necessário arquivo `.env`.
 
+## Deploy (GitHub Pages)
+
+Push na branch `main` dispara o workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): build (`npm ci` + `npm run build`) e publicação no GitHub Pages.
+
+**Uma vez no repositório:** Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+
+Site: `https://guilhermeroesler.github.io/brModeloPlus/`
+
+O `base` do Vite (`/brModeloPlus/`) é aplicado só no CI (`GITHUB_ACTIONS`); em `npm run build` local o base continua `/`.
+
 ## Estrutura do código
 
 ```

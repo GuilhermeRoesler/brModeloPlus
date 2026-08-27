@@ -159,6 +159,13 @@ Posição da cadeia Tab: `positionRightOf`.
 3. Atributos rápidos (Enter): `heuserAttributePosition` + `layoutHeuserAttributes` sob o dono + edge + `layout: false`
 4. Cadeia Tab (entidade ↔ relacionamento): `positionRightOf` + edge + `layout: false` + edição inline
 
+## Deploy
+
+- Workflow: `.github/workflows/deploy.yml` — em push em `main` (ou `workflow_dispatch`): `npm ci` → `npm run build` → artifact `dist` → GitHub Pages
+- `vite.config.ts`: `base: '/brModeloPlus/'` quando `GITHUB_ACTIONS === 'true'`; caso contrário `/`
+- Repo: Settings → Pages → Source = **GitHub Actions** (necessário uma vez)
+- URL: `https://guilhermeroesler.github.io/brModeloPlus/`
+
 ## Convenções de código
 
 - TypeScript estrito; `import type` para tipos
