@@ -1,13 +1,12 @@
 import {
   MODES,
   ROOM_VERSION,
-  type ErEdge,
-  type ErNode,
   type Mode,
   type ModeDiagram,
   type Project,
   type RoomData,
 } from '../types';
+import { sanitizeModeDiagram } from './sanitizeDiagram';
 
 const LOCAL_PROJECTS_KEY = 'brmodelo-local-projects';
 
@@ -63,15 +62,6 @@ const isMode = (value: unknown): value is Mode =>
   value === MODES.LOGICAL ||
   value === MODES.PHYSICAL;
 
-const asDiagram = (value: unknown): ModeDiagram => {
-  if (!value || typeof value !== 'object') return createEmptyDiagram();
-  const d = value as Partial<ModeDiagram>;
-  return {
-    nodes: Array.isArray(d.nodes) ? (d.nodes as ErNode[]) : [],
-    edges: Array.isArray(d.edges) ? (d.edges as ErEdge[]) : [],
-  };
-};
-
 /** Normaliza JSON antigo (v2: nodes/edges únicos) ou v3 para `RoomData` atual. */
 export const normalizeRoomData = (raw: unknown): RoomData => {
   const empty = createEmptyRoom();
@@ -84,9 +74,9 @@ export const normalizeRoomData = (raw: unknown): RoomData => {
     const diagramsRaw = data.diagrams as Partial<Record<Mode, unknown>>;
     return {
       diagrams: {
-        [MODES.CONCEPTUAL]: asDiagram(diagramsRaw[MODES.CONCEPTUAL]),
-        [MODES.LOGICAL]: asDiagram(diagramsRaw[MODES.LOGICAL]),
-        [MODES.PHYSICAL]: asDiagram(diagramsRaw[MODES.PHYSICAL]),
+        [MODES.CONCEPTUAL]: sanitizeModeDiagram(diagramsRaw[MODES.CONCEPTUAL]),
+        [MODES.LOGICAL]: sanitizeModeDiagram(diagramsRaw[MODES.LOGICAL]),
+        [MODES.PHYSICAL]: sanitizeModeDiagram(diagramsRaw[MODES.PHYSICAL]),
       },
       mode,
       version: ROOM_VERSION,
@@ -95,10 +85,10 @@ export const normalizeRoomData = (raw: unknown): RoomData => {
 
   // Legacy v2: um único nodes/edges — migra para o modo salvo na época.
   const diagrams = createEmptyDiagrams();
-  diagrams[mode] = {
-    nodes: Array.isArray(data.nodes) ? (data.nodes as ErNode[]) : [],
-    edges: Array.isArray(data.edges) ? (data.edges as ErEdge[]) : [],
-  };
+  diagrams[mode] = sanitizeModeDiagram({
+    nodes: data.nodes,
+    edges: data.edges,
+  });
 
   return {
     diagrams,

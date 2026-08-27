@@ -1,4 +1,10 @@
-export const generateId = () => Math.random().toString(36).substring(2, 11);
+/** ID curto para nós/salas (não é segredo de segurança). */
+export const generateId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  }
+  return Math.random().toString(36).substring(2, 11);
+};
 
 export const getRoomIdFromUrl = () => {
   const params = new URLSearchParams(window.location.search);
@@ -7,7 +13,7 @@ export const getRoomIdFromUrl = () => {
 
 export const setRoomInUrl = (roomId: string | null) => {
   const newUrl = roomId
-    ? `${window.location.pathname}?room=${roomId}`
+    ? `${window.location.pathname}?room=${encodeURIComponent(roomId)}`
     : window.location.pathname;
   window.history.pushState({ path: newUrl }, '', newUrl);
 };

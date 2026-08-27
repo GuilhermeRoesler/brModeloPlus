@@ -33,9 +33,9 @@ Roteamento em `src/App.tsx` (sem React Router): estado `user` + `roomId` decide 
 ```
 src/
   App.tsx                 # roteamento dashboard ↔ editor
-  config/                 # constantes de UI, LOCAL_USER
+  config/                 # constantes de UI, LOCAL_USER, limits (import)
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # utils puros (SQL, localStorage, projectFile, fileTransfer, deriveRelational, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
+  lib/                    # utils puros (SQL, localStorage, projectFile, fileTransfer, sanitizeDiagram, deriveRelational, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
   services/               # persistência local (projects + rooms)
   hooks/                  # useAuth (local), useProjects
   components/
@@ -80,9 +80,12 @@ Cada modo tem persistência própria em `diagrams`. Conceitual e lógico usam ca
 ### Import / export JSON
 
 - Formato portátil em `lib/projectFile.ts` (`format: "brmodelo-plus"` + `room: RoomData`); também aceita RoomData cru (v2/v3)
+- **Limites / sanitização** (`config/limits.ts` + `lib/sanitizeDiagram.ts`): máx. 2 MB; nós/arestas com allowlist de campos (sem `style` arbitrário do JSON); caps por diagrama
+- `normalizeRoomData` sempre passa diagramas por `sanitizeModeDiagram`
+- DDL em `lib/sql.ts` usa identificadores entre aspas e tipos allowlisted
 - **Editor:** Exportar / Importar no header — import substitui os três diagramas da sala atual (com confirmação)
 - **Dashboard:** Importar JSON cria um projeto novo e abre o editor
-- Download/leitura de arquivo: `lib/fileTransfer.ts`
+- Download/leitura de arquivo: `lib/fileTransfer.ts` (rejeita arquivo acima do limite antes de ler)
 
 ## Domínio do diagrama (100% React Flow)
 

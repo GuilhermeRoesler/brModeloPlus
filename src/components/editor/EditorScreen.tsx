@@ -167,12 +167,14 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       const diagrams = syncDerivedDiagrams(data.diagrams);
       diagramsRef.current = diagrams;
       const active = diagrams[data.mode] ?? { nodes: [], edges: [] };
+      const nextNodes = normalizeErNodes(active.nodes);
+      const nextEdges = normalizeErEdges(active.edges);
       setMode(data.mode);
       modeRef.current = data.mode;
-      setNodes(active.nodes);
-      setEdges(active.edges);
-      nodesRef.current = active.nodes;
-      edgesRef.current = active.edges;
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      nodesRef.current = nextNodes;
+      edgesRef.current = nextEdges;
       setTool('select');
       setEditingLabelId(null);
       editingLabelIdRef.current = null;

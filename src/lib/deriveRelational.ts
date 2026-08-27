@@ -23,8 +23,8 @@ import {
 const DEFAULT_COL_TYPE = 'VARCHAR(255)';
 const DEFAULT_PK_TYPE = 'INTEGER';
 
-const slug = (label: string, fallback: string) => {
-  const s = label
+const slug = (label: unknown, fallback: string) => {
+  const s = String(label ?? '')
     .trim()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -64,7 +64,7 @@ const leafAttributesOf = (
 ): ErNode[] => {
   const all = attributeSubtreeOf(ownerId, nodes, edges);
   return all.filter((attr) => {
-    if (attr.data.attrType === 'derived') return false;
+    if (attr.data?.attrType === 'derived') return false;
     return linkedAttributesOf(attr.id, nodes, edges).length === 0;
   });
 };
@@ -75,12 +75,12 @@ const columnsFromAttributes = (
 ): TableColumn[] => {
   const cols: TableColumn[] = [];
   for (const attr of attrs) {
-    if (options.skipMultivalued && attr.data.attrType === 'multivalued') continue;
+    if (options.skipMultivalued && attr.data?.attrType === 'multivalued') continue;
     cols.push({
       id: colIdForAttr(attr.id),
-      name: slug(attr.data.label, 'atributo'),
+      name: slug(attr.data?.label, 'atributo'),
       type: DEFAULT_COL_TYPE,
-      isPk: attr.data.attrType === 'key',
+      isPk: attr.data?.attrType === 'key',
     });
   }
   return cols;
@@ -176,7 +176,7 @@ export const deriveRelationalFromConceptual = (
     asPk = false,
   ) => {
     const refEntity = byId.get(refEntityId);
-    const refName = slug(refEntity?.data.label ?? 'ref', 'ref');
+    const refName = slug(refEntity?.data?.label ?? 'ref', 'ref');
     const cols = columnsByTable.get(tableId) ?? [];
     cols.push({
       id: colIdFk(relId, refEntityId),
@@ -192,8 +192,8 @@ export const deriveRelationalFromConceptual = (
   for (const entity of entities) {
     const tableId = tableIdForEntity(entity.id);
     const leafs = leafAttributesOf(entity.id, nodes, edges);
-    const regular = leafs.filter((a) => a.data.attrType !== 'multivalued');
-    const multivalued = leafs.filter((a) => a.data.attrType === 'multivalued');
+    const regular = leafs.filter((a) => a.data?.attrType !== 'multivalued');
+    const multivalued = leafs.filter((a) => a.data?.attrType === 'multivalued');
 
     let columns = ensurePrimaryKey(
       columnsFromAttributes(regular),
@@ -206,7 +206,7 @@ export const deriveRelationalFromConceptual = (
         id: tableId,
         type: NODE_TYPES.TABLE,
         position: { ...entity.position },
-        label: entity.data.label || 'Entidade',
+        label: String(entity.data?.label || 'Entidade'),
         data: { columns },
       }),
     );
@@ -215,11 +215,11 @@ export const deriveRelationalFromConceptual = (
       const mvTableId = tableIdForMultivalued(mv.id);
       const valueCol: TableColumn = {
         id: colIdForAttr(mv.id),
-        name: slug(mv.data.label, 'valor'),
+        name: slug(mv.data?.label, 'valor'),
         type: DEFAULT_COL_TYPE,
       };
       const ownerPk = pkColumnName(columns);
-      const ownerSlug = slug(entity.data.label, 'ent');
+      const ownerSlug = slug(entity.data?.label, 'ent');
       const mvColumns = ensurePrimaryKey(
         [
           {
@@ -241,7 +241,7 @@ export const deriveRelationalFromConceptual = (
             x: entity.position.x + 40,
             y: entity.position.y + 140,
           },
-          label: `${entity.data.label}_${mv.data.label}`.trim() || 'multivalorado',
+          label: `${entity.data?.label ?? 'ent'}_${mv.data?.label ?? 'mv'}`.trim() || 'multivalorado',
           data: { columns: mvColumns },
         }),
       );
@@ -262,7 +262,7 @@ export const deriveRelationalFromConceptual = (
     if (parts.length < 2) continue;
 
     const relAttrs = leafAttributesOf(rel.id, nodes, edges).filter(
-      (a) => a.data.attrType !== 'multivalued',
+      (a) => a.data?.attrType !== 'multivalued',
     );
     const manyParts = parts.filter((p) => isManyCard(p.card));
     const useAssociative =
@@ -297,7 +297,7 @@ export const deriveRelationalFromConceptual = (
           id: tableId,
           type: NODE_TYPES.TABLE,
           position: { ...rel.position },
-          label: rel.data.label || 'Relacionamento',
+          label: String(rel.data?.label || 'Relacionamento'),
           data: { columns },
         }),
       );
@@ -333,7 +333,7 @@ export const deriveRelationalFromConceptual = (
       id: node.id,
       type: NODE_TYPES.TABLE,
       position: node.position,
-      label: node.data.label,
+      label: String(node.data?.label ?? 'tabela'),
       data: { columns },
     });
   });

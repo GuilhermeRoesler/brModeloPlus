@@ -1,3 +1,6 @@
+import { PROJECT_FILE_MAX_BYTES } from '../config/limits';
+import { ProjectFileError } from './projectFile';
+
 /** Dispara download de um arquivo de texto no navegador. */
 export const downloadTextFile = (
   filename: string,
@@ -18,6 +21,14 @@ export const downloadTextFile = (
 
 export const readFileAsText = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
+    if (file.size > PROJECT_FILE_MAX_BYTES) {
+      reject(
+        new ProjectFileError(
+          `Arquivo muito grande (máx. ${Math.floor(PROJECT_FILE_MAX_BYTES / (1024 * 1024))} MB).`,
+        ),
+      );
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result ?? ''));
     reader.onerror = () =>

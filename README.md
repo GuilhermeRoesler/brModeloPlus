@@ -21,7 +21,7 @@
   - **Enter** (modo conceitual): cria atributo ligado abaixo do dono com edição inline do nome.
   - **Tab** (modo conceitual): com entidade selecionada, cria relacionamento já conectado à direita (edição inline); Tab de novo cria a próxima entidade interligada.
 - **Geração de SQL:** modo físico exibe `CREATE TABLE` completo (mesmo conteúdo da antiga aba SQL).
-- **Import / export JSON:** baixar ou carregar o projeto (conceitual + lógico + físico). No dashboard, importar cria um projeto novo; no editor, importar substitui a sala atual.
+- **Import / export JSON:** baixar ou carregar o projeto (conceitual + lógico + físico). No dashboard, importar cria um projeto novo; no editor, importar substitui a sala atual. Arquivos são validados (tamanho máx. 2 MB; schema sanitizado).
 - **Projetos locais:** criar, listar e excluir diagramas (`localStorage`).
 
 ## Tecnologias
@@ -52,7 +52,7 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:5173`. O app abre direto no dashboard (modo local).
+Acesse `http://localhost:5173`. O app abre direto no dashboard (modo local). Não é necessário arquivo `.env`.
 
 ## Estrutura do código
 
@@ -61,7 +61,7 @@ src/
   App.tsx                 # Roteador (dashboard → editor)
   config/                 # Constantes e LOCAL_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # SQL, localStorage, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality
+  lib/                    # SQL, localStorage, sanitizeDiagram, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality
   services/               # Projetos e salas (localStorage)
   hooks/                  # useAuth, useProjects
   components/

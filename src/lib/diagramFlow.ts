@@ -277,11 +277,11 @@ export const patchNodeData = (
       data,
       width: size.width,
       height: size.height,
-      style: { ...n.style, width: size.width, height: size.height },
+      style: { width: size.width, height: size.height },
     };
   });
 
-/** Garante width/height/style e limpa parentId residual. */
+/** Garante width/height/style controlado (sem herdar style arbitrário do JSON). */
 export const normalizeErNodes = (nodes: ErNode[]): ErNode[] =>
   nodes.map((n) => {
     const size = getNodeSize(n);
@@ -291,7 +291,6 @@ export const normalizeErNodes = (nodes: ErNode[]): ErNode[] =>
       width: size.width,
       height: size.height,
       style: {
-        ...n.style,
         width: size.width,
         height: size.height,
         overflow: 'visible',
@@ -309,6 +308,5 @@ export const normalizeErEdges = (edges: ErEdge[]): ErEdge[] =>
     style: {
       stroke: '#cbd5e1',
       strokeWidth: 2,
-      ...e.style,
     },
   }));

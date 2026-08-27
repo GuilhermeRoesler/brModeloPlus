@@ -1,3 +1,4 @@
+import { PROJECT_FILE_MAX_BYTES } from '../config/limits';
 import { normalizeRoomData } from './localStorage';
 import { ROOM_VERSION, type RoomData } from '../types';
 
@@ -50,7 +51,16 @@ const looksLikeRoomPayload = (data: Record<string, unknown>) =>
   Array.isArray(data.nodes) ||
   Array.isArray(data.edges);
 
-/** Aceita pacote `brmodelo-plus` ou RoomData cru (v2/v3). */
+const assertProjectFileTextSize = (text: string) => {
+  const bytes = new TextEncoder().encode(text).length;
+  if (bytes > PROJECT_FILE_MAX_BYTES) {
+    throw new ProjectFileError(
+      `Arquivo muito grande (máx. ${Math.floor(PROJECT_FILE_MAX_BYTES / (1024 * 1024))} MB).`,
+    );
+  }
+};
+
+/** Aceita pacote `brmodelo-plus` ou RoomData cru (v2/v3). Sanitiza nós/arestas. */
 export const parseProjectFile = (raw: unknown): ParsedProjectFile => {
   if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new ProjectFileError(
@@ -67,14 +77,14 @@ export const parseProjectFile = (raw: unknown): ParsedProjectFile => {
       );
     }
     return {
-      name: typeof data.name === 'string' ? data.name : undefined,
+      name: typeof data.name === 'string' ? data.name.slice(0, 200) : undefined,
       room: normalizeRoomData(data.room),
     };
   }
 
   if (looksLikeRoomPayload(data)) {
     return {
-      name: typeof data.name === 'string' ? data.name : undefined,
+      name: typeof data.name === 'string' ? data.name.slice(0, 200) : undefined,
       room: normalizeRoomData(data),
     };
   }
@@ -85,6 +95,7 @@ export const parseProjectFile = (raw: unknown): ParsedProjectFile => {
 };
 
 export const parseProjectFileJson = (text: string): ParsedProjectFile => {
+  assertProjectFileTextSize(text);
   let raw: unknown;
   try {
     raw = JSON.parse(text) as unknown;
