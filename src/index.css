@@ -462,6 +462,11 @@
 
 .editor-mode-pill {
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.editor-mode-tab {
+  transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .editor-panel-shell {
@@ -520,13 +525,6 @@
 
 .editor-panel-in {
   animation: editor-fade-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.editor-mode-tab {
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
 }
 
 .editor-canvas-flash {

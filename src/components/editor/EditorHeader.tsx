@@ -146,16 +146,16 @@ export const EditorHeader = ({
         <Separator orientation="vertical" className="hidden sm:block h-7 mx-1" />
 
         <div
-          className="relative flex p-1 rounded-xl bg-muted/80 border border-border/60"
+          className="relative grid grid-cols-[repeat(3,minmax(0,1fr))] p-1 rounded-xl bg-muted/80 border border-border/60 shrink-0"
           role="tablist"
           aria-label="Modo de modelagem"
         >
           <span
             aria-hidden
-            className="editor-mode-pill absolute top-1 bottom-1 rounded-lg bg-background shadow-sm border border-border/50 pointer-events-none"
+            className="editor-mode-pill absolute top-1 bottom-1 left-1 rounded-lg bg-background shadow-sm border border-border/50 pointer-events-none"
             style={{
               width: `calc((100% - 0.5rem) / ${MODE_ORDER.length})`,
-              transform: `translateX(${modeIndex * 100}%)`,
+              transform: `translateX(calc(${modeIndex} * 100%))`,
             }}
           />
           {MODE_ORDER.map((m) => (
@@ -168,7 +168,8 @@ export const EditorHeader = ({
               aria-selected={mode === m}
               onClick={() => onChangeMode(m)}
               className={cn(
-                'editor-mode-tab relative z-[1] h-8 rounded-lg px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold shadow-none flex-1',
+                'editor-mode-tab relative z-[1] h-8 w-full min-w-0 rounded-lg px-1.5 sm:px-3 text-[11px] sm:text-xs font-semibold shadow-none',
+                'hover:translate-y-0 active:translate-y-0 active:scale-100',
                 mode === m
                   ? 'text-primary hover:bg-transparent hover:text-primary'
                   : 'text-muted-foreground hover:text-foreground hover:bg-transparent',

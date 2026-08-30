@@ -13,7 +13,7 @@
   - **Lógico:** tabelas/FKs geradas a partir do conceitual (somente leitura estrutural).
   - **Físico:** SQL DDL gerado automaticamente (syntax highlight + numeração de linhas + copiar).
 - **Editor**
-  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto. Controles de zoom + ajustar à tela + minimapa opcional; empty state ilustrado e dicas de atalho no canvas; grade pontilhada; status bar (modo · nós · arestas · salvo).
+  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto. Controles de zoom + ajustar à tela + minimapa opcional; empty state ilustrado; grade pontilhada; status bar (modo · nós · arestas · salvo).
   - **Header workspace:** nome do projeto editável, indicador de salvo, tabs Conceitual·Lógico·Físico com pill animado, menu ⋯ (import/export JSON + tema claro/escuro).
   - Painel de propriedades (classificação e tipo de dados do atributo, switches, resumo em multi-seleção); no mobile abre como bottom sheet.
   - Toolbar com atalhos **V** (selecionar), **E** (entidade), **R** (relacionamento), **C** (conectar); no mobile fica horizontal na base.
