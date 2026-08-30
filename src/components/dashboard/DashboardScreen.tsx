@@ -1,20 +1,115 @@
 import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react';
-import {
-  FolderOpen,
-  FolderPlus,
-  LayoutGrid,
-  Trash2,
-  Upload,
-} from 'lucide-react';
+import { FolderPlus, Trash2, Upload } from 'lucide-react';
 import { readFileAsText } from '../../lib/fileTransfer';
 import { parseProjectFileJson, ProjectFileError } from '../../lib/projectFile';
 import { useProjects } from '../../hooks/useProjects';
-import type { AppUser } from '../../types';
+import type { AppUser, Project } from '../../types';
 
 type DashboardScreenProps = {
   user: AppUser;
   onOpenProject: (roomId: string) => void;
 };
+
+const formatProjectDate = (createdAt: Project['createdAt']): string => {
+  if (
+    createdAt &&
+    typeof createdAt === 'object' &&
+    'seconds' in createdAt &&
+    typeof (createdAt as { seconds: unknown }).seconds === 'number'
+  ) {
+    return new Date((createdAt as { seconds: number }).seconds * 1000).toLocaleDateString(
+      'pt-BR',
+      { day: 'numeric', month: 'short', year: 'numeric' },
+    );
+  }
+  return 'Hoje';
+};
+
+/** Miniatura decorativa de diagrama ER — só visual, sem dados reais. */
+const ProjectThumb = ({ variant }: { variant: number }) => {
+  const shift = (variant % 3) * 6;
+  return (
+    <svg viewBox="0 0 200 112" className="w-full h-full" aria-hidden>
+      <defs>
+        <linearGradient id={`thumb-bg-${variant}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#eef2ff" />
+          <stop offset="100%" stopColor="#e0e7ff" />
+        </linearGradient>
+      </defs>
+      <rect width="200" height="112" fill={`url(#thumb-bg-${variant})`} />
+      <g
+        fill="none"
+        stroke="#4f46e5"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.85"
+        transform={`translate(${shift}, 0)`}
+      >
+        <rect x="28" y="34" width="48" height="28" rx="4" fill="#fff" fillOpacity="0.7" />
+        <path d="M108 28 L132 48 L108 68 L84 48 Z" fill="#fff" fillOpacity="0.55" />
+        <line x1="76" y1="48" x2="84" y2="48" />
+        <line x1="52" y1="62" x2="52" y2="78" />
+        <circle cx="52" cy="86" r="7" fill="#4f46e5" stroke="none" />
+        <rect x="148" y="40" width="36" height="22" rx="3" fill="#fff" fillOpacity="0.45" />
+        <line x1="132" y1="48" x2="148" y2="50" />
+      </g>
+    </svg>
+  );
+};
+
+const HeroDiagram = () => (
+  <svg
+    viewBox="0 0 280 200"
+    className="dash-hero-mark w-full h-full drop-shadow-sm"
+    aria-hidden
+  >
+    <rect
+      x="24"
+      y="48"
+      width="72"
+      height="44"
+      rx="8"
+      fill="white"
+      fillOpacity="0.92"
+      stroke="#4f46e5"
+      strokeWidth="3"
+    />
+    <path
+      d="M148 40 L188 72 L148 104 L108 72 Z"
+      fill="white"
+      fillOpacity="0.88"
+      stroke="#4f46e5"
+      strokeWidth="3"
+    />
+    <line x1="96" y1="70" x2="108" y2="72" stroke="#4f46e5" strokeWidth="3" />
+    <line x1="60" y1="92" x2="60" y2="128" stroke="#4f46e5" strokeWidth="3" />
+    <circle cx="60" cy="144" r="12" fill="#4f46e5" className="dash-key" />
+    <rect
+      x="198"
+      y="56"
+      width="58"
+      height="36"
+      rx="6"
+      fill="white"
+      fillOpacity="0.75"
+      stroke="#6366f1"
+      strokeWidth="2.5"
+    />
+    <line x1="188" y1="72" x2="198" y2="72" stroke="#6366f1" strokeWidth="2.5" />
+    <text
+      x="60"
+      y="76"
+      textAnchor="middle"
+      fill="#312e81"
+      fontSize="11"
+      fontFamily="Sora, sans-serif"
+      fontWeight="600"
+    >
+      Entidade
+    </text>
+  </svg>
+);
 
 export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) => {
   const { projects, loading, create, remove } = useProjects(user);
@@ -61,138 +156,205 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
     }
   };
 
+  const openCreate = () => {
+    setIsCreating(true);
+    setNewProjectName('');
+  };
+
   return (
-    <div className="w-full h-screen bg-slate-50 flex flex-col overflow-hidden">
-      <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
+    <div className="dashboard-shell w-full h-screen flex flex-col overflow-hidden">
+      <header className="shrink-0 px-5 sm:px-8 pt-5 pb-2 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <img
             src={`${import.meta.env.BASE_URL}logo.svg`}
-            alt="BrModeloPlus"
-            className="w-8 h-8 rounded-lg shadow-sm"
+            alt=""
+            className="w-9 h-9 rounded-[10px] shrink-0"
           />
-          <h1 className="font-bold text-slate-800">Meus Projetos</h1>
-          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded uppercase tracking-wide">
-            Local
+          <span className="text-sm font-semibold tracking-tight text-slate-800 truncate">
+            BrModelo<span className="text-indigo-600">Plus</span>
           </span>
         </div>
-        <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">
-          Modo local
-        </span>
+        <p className="text-[11px] font-medium text-slate-500 tracking-wide">
+          Salvo neste dispositivo
+        </p>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-8">
+      <main className="flex-1 overflow-y-auto px-5 sm:px-8 pb-10">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-8 gap-3 flex-wrap">
-            <h2 className="text-2xl font-bold text-slate-800">Projetos Recentes</h2>
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/json,.json,.brmodelo.json"
-                className="hidden"
-                onChange={(e) => {
-                  void handleImportFile(e);
-                }}
-              />
-              <button
-                type="button"
-                disabled={importing}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-sm font-bold transition-all disabled:opacity-60"
-              >
-                <Upload size={18} />
-                {importing ? 'Importando…' : 'Importar JSON'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsCreating(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
-              >
-                <FolderPlus size={18} /> Novo Projeto
-              </button>
-            </div>
-          </div>
+          <section className="dash-animate-in relative grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-center py-6 sm:py-10">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-600 mb-3">
+                Modelagem de dados
+              </p>
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.05] mb-4">
+                BrModelo
+                <span className="text-indigo-600">Plus</span>
+              </h1>
+              <p className="text-base sm:text-lg text-slate-600 max-w-md leading-relaxed mb-8">
+                Diagramas ER conceitual, lógico e físico — no navegador, sem conta.
+              </p>
 
-          {isCreating && (
-            <div className="mb-8 p-6 bg-white rounded-2xl border border-indigo-100 shadow-lg">
-              <form onSubmit={(e) => void handleCreate(e)} className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                    Nome do Projeto
-                  </label>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    placeholder="Ex: E-commerce Database"
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json,.json,.brmodelo.json"
+                  className="hidden"
+                  onChange={(e) => {
+                    void handleImportFile(e);
+                  }}
+                />
                 <button
                   type="button"
-                  onClick={() => setIsCreating(false)}
-                  className="px-4 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl"
+                  onClick={openCreate}
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors"
                 >
-                  Cancelar
+                  <FolderPlus size={18} strokeWidth={2.25} />
+                  Novo projeto
                 </button>
                 <button
-                  type="submit"
-                  className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700"
+                  type="button"
+                  disabled={importing}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 backdrop-blur-sm"
                 >
-                  Criar
+                  <Upload size={18} strokeWidth={2.25} />
+                  {importing ? 'Importando…' : 'Importar JSON'}
                 </button>
-              </form>
+              </div>
             </div>
+
+            <div className="hidden sm:block relative h-44 lg:h-56">
+              <div className="absolute inset-0 rounded-3xl bg-white/50 border border-white/80 backdrop-blur-[2px]" />
+              <div className="relative h-full p-4 lg:p-6">
+                <HeroDiagram />
+              </div>
+            </div>
+          </section>
+
+          {isCreating && (
+            <form
+              onSubmit={(e) => void handleCreate(e)}
+              className="dash-animate-in mb-8 p-5 sm:p-6 rounded-2xl bg-white/90 border border-indigo-100/80 backdrop-blur-sm"
+            >
+              <label className="block text-xs font-semibold text-slate-500 tracking-wide mb-2">
+                Nome do projeto
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-stretch">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="Ex.: Biblioteca universitária"
+                  className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 outline-none text-sm font-medium text-slate-800 placeholder:text-slate-400"
+                />
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreating(false)}
+                    className="flex-1 sm:flex-none px-4 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl text-sm transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 text-sm transition-colors"
+                  >
+                    Criar
+                  </button>
+                </div>
+              </div>
+            </form>
           )}
 
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <span className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <section className="dash-animate-in" style={{ animationDelay: '0.12s' }}>
+            <div className="flex items-baseline justify-between gap-3 mb-5">
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">
+                Seus projetos
+              </h2>
+              {!loading && projects.length > 0 && (
+                <span className="text-xs font-medium text-slate-400 tabular-nums">
+                  {projects.length} {projects.length === 1 ? 'projeto' : 'projetos'}
+                </span>
+              )}
             </div>
-          ) : projects.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                <FolderOpen size={32} />
+
+            {loading ? (
+              <div className="flex justify-center py-24">
+                <span className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
               </div>
-              <h3 className="text-lg font-bold text-slate-700">Nenhum projeto encontrado</h3>
-              <p className="text-slate-500">
-                Crie um diagrama ou importe um arquivo JSON.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
+            ) : projects.length === 0 ? (
+              <div className="relative overflow-hidden rounded-3xl border border-dashed border-indigo-200/80 bg-white/60 px-6 py-16 text-center">
                 <div
-                  key={project.id}
-                  onClick={() => onOpenProject(project.roomId)}
-                  className="group bg-white p-5 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-50 transition-all cursor-pointer relative"
+                  className="pointer-events-none absolute inset-0 opacity-40"
+                  aria-hidden
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <LayoutGrid size={20} />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => void handleDelete(e, project.id)}
-                      className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                  <div className="absolute left-1/2 top-6 -translate-x-1/2 w-64 h-36">
+                    <HeroDiagram />
                   </div>
-                  <h3 className="font-bold text-slate-800 text-lg mb-1">{project.name}</h3>
-                  <p className="text-xs text-slate-400">
-                    Editado em{' '}
-                    {(project.createdAt as { seconds?: number } | undefined)?.seconds
-                      ? new Date(
-                          ((project.createdAt as { seconds: number }).seconds) * 1000,
-                        ).toLocaleDateString()
-                      : 'Hoje'}
-                  </p>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="relative">
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">
+                    Comece pelo primeiro diagrama
+                  </h3>
+                  <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6 leading-relaxed">
+                    Crie um projeto em branco ou importe um JSON exportado do BrModeloPlus.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openCreate}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                  >
+                    <FolderPlus size={16} />
+                    Criar projeto
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ul className="dash-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none p-0 m-0">
+                {projects.map((project, index) => (
+                  <li key={project.id}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onOpenProject(project.roomId)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onOpenProject(project.roomId);
+                        }
+                      }}
+                      className="group w-full text-left rounded-2xl overflow-hidden bg-white/85 border border-slate-200/90 hover:border-indigo-300 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 cursor-pointer"
+                    >
+                      <div className="h-28 border-b border-slate-100 overflow-hidden pointer-events-none">
+                        <ProjectThumb variant={index} />
+                      </div>
+                      <div className="p-4 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-slate-800 text-[15px] truncate group-hover:text-indigo-700 transition-colors">
+                            {project.name}
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {formatProjectDate(project.createdAt)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          title="Excluir projeto"
+                          aria-label={`Excluir ${project.name}`}
+                          onClick={(e) => void handleDelete(e, project.id)}
+                          className="p-2 -mr-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </main>
     </div>

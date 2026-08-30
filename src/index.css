@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Sora", ui-sans-serif, system-ui, sans-serif;
+}
+
 /* React Flow: canvas ocupa o container do editor */
 .react-flow {
   width: 100%;
@@ -23,4 +27,109 @@
 
 .react-flow__attribution {
   display: none;
+}
+
+/* —— Dashboard atmosphere —— */
+.dashboard-shell {
+  --dash-ink: #0f172a;
+  --dash-muted: #64748b;
+  --dash-accent: #4f46e5;
+  --dash-accent-soft: #e0e7ff;
+  --dash-surface: rgba(255, 255, 255, 0.78);
+  --dash-line: rgba(15, 23, 42, 0.08);
+  position: relative;
+  isolation: isolate;
+  font-family: var(--font-sans);
+  color: var(--dash-ink);
+  background:
+    radial-gradient(ellipse 90% 60% at 8% -10%, rgba(99, 102, 241, 0.22), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 96% 8%, rgba(14, 165, 233, 0.12), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 70% 100%, rgba(79, 70, 229, 0.08), transparent 55%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 48%, #f1f5f9 100%);
+}
+
+.dashboard-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.45;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%234f46e5' stroke-opacity='0.09' stroke-width='1.5'%3E%3Crect x='18' y='28' width='44' height='28' rx='3'/%3E%3Cpath d='M86 26 L108 42 L86 58 L64 42 Z'/%3E%3Cline x1='62' y1='42' x2='64' y2='42'/%3E%3Cline x1='40' y1='56' x2='40' y2='72'/%3E%3Ccircle cx='40' cy='80' r='6'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 85%);
+}
+
+@keyframes dash-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dash-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.dash-animate-in {
+  animation: dash-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-stagger > * {
+  animation: dash-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-stagger > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.dash-stagger > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.dash-stagger > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.dash-stagger > *:nth-child(4) {
+  animation-delay: 0.16s;
+}
+.dash-stagger > *:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.dash-stagger > *:nth-child(6) {
+  animation-delay: 0.24s;
+}
+.dash-stagger > *:nth-child(7) {
+  animation-delay: 0.28s;
+}
+.dash-stagger > *:nth-child(8) {
+  animation-delay: 0.32s;
+}
+.dash-stagger > *:nth-child(9) {
+  animation-delay: 0.36s;
+}
+
+.dash-hero-mark {
+  animation: dash-fade-up 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-hero-mark .dash-key {
+  animation: dash-pulse-soft 3.2s 1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-animate-in,
+  .dash-stagger > *,
+  .dash-hero-mark,
+  .dash-hero-mark .dash-key {
+    animation: none !important;
+  }
 }

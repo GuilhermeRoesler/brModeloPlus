@@ -163,6 +163,8 @@ Posição da cadeia Tab: `positionRightOf`.
 
 - Logo em `public/logo.svg` (+ `public/logo.png` para fallback de favicon): tile indigo com marca ER (entidade → relacionamento, atributo-chave Heuser, “+” do Plus).
 - Favicon em `index.html`; mesma marca no header do dashboard e do editor (`import.meta.env.BASE_URL + 'logo.svg'`).
+- Tipografia global: **Sora** (Google Fonts).
+- **Dashboard** (`DashboardScreen`): hero com marca BrModeloPlus + CTAs; fundo atmosférico (gradientes + padrão ER); cards de projeto com miniatura ER decorativa; animações leves (`dash-animate-in` / `dash-stagger` em `index.css`).
 
 ## Deploy
 
