@@ -350,7 +350,7 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                             title="Excluir projeto"
                             aria-label={`Excluir ${project.name}`}
                             onClick={(e) => void handleDelete(e, project.id)}
-                            className="text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                            className="btn-hover btn-hover--soft text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                           >
                             <Trash2 size={15} />
                           </Button>

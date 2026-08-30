@@ -32,14 +32,14 @@ const ToolbarButton = ({ icon: Icon, label, active, onClick, color }: ToolbarBut
     title={label}
     aria-label={label}
     aria-pressed={active}
-    className={`group relative flex items-center justify-center w-11 h-11 rounded-xl transition-colors duration-150 ${
+    className={`btn-hover group relative flex items-center justify-center w-11 h-11 rounded-xl ${
       active
-        ? 'bg-indigo-600 text-white'
-        : 'text-slate-600 hover:bg-slate-100/90 hover:text-slate-800'
+        ? 'btn-hover--solid bg-indigo-600 text-white'
+        : 'btn-hover--soft text-slate-600 hover:bg-slate-100/90 hover:text-slate-800'
     }`}
   >
     <Icon size={20} className={active ? undefined : color} strokeWidth={2.1} />
-    <span className="absolute left-full ml-2.5 px-2 py-1 bg-slate-800 text-white text-[11px] font-medium rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+    <span className="absolute left-full ml-2.5 px-2 py-1 bg-slate-800 text-white text-[11px] font-medium rounded-md opacity-0 translate-x-0.5 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap z-50 transition-[opacity,transform] duration-200">
       {label}
     </span>
   </button>

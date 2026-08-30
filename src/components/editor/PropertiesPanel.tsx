@@ -79,7 +79,7 @@ export const PropertiesPanel = ({
           <button
             type="button"
             onClick={() => deleteSelected()}
-            className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors inline-flex items-center gap-2"
+            className="btn-hover btn-hover--soft px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 inline-flex items-center gap-2"
           >
             <Trash2 size={16} /> Excluir todos
           </button>
@@ -97,7 +97,7 @@ export const PropertiesPanel = ({
             <button
               type="button"
               onClick={() => deleteSelected(null)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              className="btn-hover btn-hover--soft p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
               title="Fechar seleção"
             >
               <X size={18} />
@@ -346,7 +346,7 @@ export const PropertiesPanel = ({
             <button
               type="button"
               onClick={() => deleteSelected()}
-              className="w-full py-2.5 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm"
+              className="btn-hover btn-hover--soft w-full py-2.5 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 hover:border-red-200 rounded-xl font-medium text-sm"
             >
               <Trash2 size={16} /> Excluir selecionado
             </button>

@@ -37,10 +37,10 @@ export const PhysicalSqlView = ({ nodes }: PhysicalSqlViewProps) => {
         <button
           type="button"
           onClick={handleCopy}
-          className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
+          className={`btn-hover shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold ${
             copied
               ? 'bg-emerald-600 text-white'
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              : 'btn-hover--solid bg-indigo-600 hover:bg-indigo-700 text-white'
           }`}
         >
           {copied ? (

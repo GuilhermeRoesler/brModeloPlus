@@ -83,7 +83,7 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
         <button
           type="button"
           onClick={() => void zoomOut({ duration: 150 })}
-          className="p-2 hover:bg-slate-100/90 rounded-lg text-slate-600 transition-colors"
+          className="btn-hover btn-hover--soft p-2 hover:bg-slate-100/90 rounded-lg text-slate-600"
           title="Diminuir zoom"
         >
           <ZoomOut size={17} />
@@ -94,7 +94,7 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
         <button
           type="button"
           onClick={() => void zoomIn({ duration: 150 })}
-          className="p-2 hover:bg-slate-100/90 rounded-lg text-slate-600 transition-colors"
+          className="btn-hover btn-hover--soft p-2 hover:bg-slate-100/90 rounded-lg text-slate-600"
           title="Aumentar zoom"
         >
           <ZoomIn size={17} />
@@ -105,7 +105,7 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
         onClick={() => {
           void fitView({ padding: 0.18, duration: 200, maxZoom: 1.15, minZoom: 0.35 });
         }}
-        className="editor-chrome rounded-xl p-2 text-slate-600 hover:bg-white transition-colors"
+        className="btn-hover btn-hover--soft editor-chrome rounded-xl p-2 text-slate-600 hover:bg-white"
         title="Ajustar à tela"
       >
         <Maximize2 size={17} />
@@ -116,7 +116,7 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
           const vp = getViewport();
           void setViewport({ ...vp, x: 0, y: 0, zoom: 1 }, { duration: 150 });
         }}
-        className="editor-chrome rounded-xl px-3 py-2 text-slate-600 hover:bg-white transition-colors text-[11px] font-semibold"
+        className="btn-hover btn-hover--soft editor-chrome rounded-xl px-3 py-2 text-slate-600 hover:bg-white text-[11px] font-semibold"
         title="Zoom 100% e origem"
       >
         100%
@@ -125,10 +125,10 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
         type="button"
         onClick={onToggleMinimap}
         aria-pressed={showMinimap}
-        className={`editor-chrome rounded-xl p-2 transition-colors ${
+        className={`btn-hover editor-chrome rounded-xl p-2 ${
           showMinimap
-            ? 'text-indigo-600 bg-indigo-50/80'
-            : 'text-slate-600 hover:bg-white'
+            ? 'btn-hover--solid text-indigo-600 bg-indigo-50/80'
+            : 'btn-hover--soft text-slate-600 hover:bg-white'
         }`}
         title={showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa'}
       >

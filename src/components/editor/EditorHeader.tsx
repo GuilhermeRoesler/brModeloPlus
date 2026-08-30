@@ -39,7 +39,7 @@ export const EditorHeader = ({
         <button
           type="button"
           onClick={onBack}
-          className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 rounded-xl transition-colors shrink-0"
+          className="btn-hover btn-hover--soft p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 rounded-xl shrink-0"
           title="Voltar aos projetos"
         >
           <ArrowLeft size={20} />
@@ -78,10 +78,10 @@ export const EditorHeader = ({
               role="tab"
               aria-selected={mode === m}
               onClick={() => onChangeMode(m)}
-              className={`editor-mode-tab px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold ${
+              className={`editor-mode-tab btn-hover px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold ${
                 mode === m
                   ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-white/70'
               }`}
             >
               {MODE_LABELS[m]}
@@ -101,7 +101,7 @@ export const EditorHeader = ({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100/90 border border-transparent hover:border-slate-200/80 transition-colors"
+          className="btn-hover btn-hover--soft inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100/90 border border-transparent hover:border-slate-200/80"
           title="Importar diagrama JSON"
         >
           <Upload size={14} />
@@ -110,7 +110,7 @@ export const EditorHeader = ({
         <button
           type="button"
           onClick={onExportJson}
-          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100/90 border border-transparent hover:border-slate-200/80 transition-colors"
+          className="btn-hover btn-hover--soft inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100/90 border border-transparent hover:border-slate-200/80"
           title="Exportar diagrama JSON"
         >
           <Download size={14} />
