@@ -40,3 +40,13 @@ export const deleteProject = async (_user: AppUser, projectId: string) => {
   saveLocalProjects(next);
   deleteLocalRoom(projectId);
 };
+
+export const renameProject = (roomId: string, name: string): string => {
+  const trimmed = name.trim() || 'Projeto';
+  const projects = loadLocalProjects();
+  const next = projects.map((p) =>
+    p.roomId === roomId || p.id === roomId ? { ...p, name: trimmed } : p,
+  );
+  saveLocalProjects(next);
+  return trimmed;
+};

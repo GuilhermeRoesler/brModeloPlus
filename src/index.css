@@ -366,6 +366,9 @@
   font-family: var(--font-sans);
   background: linear-gradient(180deg, #eef2ff 0%, #f1f5f9 40%, #e2e8f0 100%);
 }
+.dark .editor-shell {
+  background: linear-gradient(180deg, #14121f 0%, #18181f 45%, #121218 100%);
+}
 
 .editor-chrome {
   background: rgba(255, 255, 255, 0.86);
@@ -373,11 +376,20 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+.dark .editor-chrome {
+  background: rgba(30, 28, 42, 0.88);
+  border-color: rgba(148, 163, 184, 0.16);
+}
 
 .editor-canvas-bg {
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.08), transparent 55%),
     linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+.dark .editor-canvas-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(129, 140, 248, 0.12), transparent 55%),
+    linear-gradient(180deg, #16151d 0%, #121218 100%);
 }
 
 @keyframes editor-fade-in {
@@ -422,8 +434,34 @@
   }
 }
 
+@keyframes editor-panel-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes editor-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 .editor-mode-in {
   animation: editor-mode-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.editor-mode-pill {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .editor-panel-shell {
@@ -445,6 +483,39 @@
 }
 .editor-panel-shell--open .editor-panel-body {
   animation: editor-panel-slide 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  width: 20rem;
+  min-width: 20rem;
+}
+
+@media (max-width: 767px) {
+  .editor-panel-shell {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100% !important;
+    max-height: 0;
+    border-left-width: 0 !important;
+    border-top-width: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: 0 -12px 40px -16px rgba(15, 23, 42, 0.28);
+    transition:
+      max-height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.22s ease,
+      border-top-width 0.3s ease;
+  }
+  .editor-panel-shell--open {
+    max-height: min(62vh, 28rem);
+    border-top-width: 1px;
+    width: 100% !important;
+  }
+  .editor-panel-shell--open .editor-panel-body {
+    animation: editor-panel-sheet 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    width: 100%;
+    min-width: 0;
+    max-height: min(62vh, 28rem);
+  }
 }
 
 .editor-panel-in {
@@ -455,11 +526,7 @@
   transition:
     color 0.2s ease,
     background-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.editor-mode-tab[aria-selected="true"] {
-  transform: translateY(-0.5px);
+    box-shadow 0.2s ease;
 }
 
 .editor-canvas-flash {
@@ -473,6 +540,18 @@
     transparent 70%
   );
   animation: editor-canvas-flash 0.55s ease-out forwards;
+}
+
+.editor-toast {
+  animation: editor-toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.editor-connect-mode .react-flow__node {
+  cursor: crosshair !important;
+}
+
+.editor-connect-handle:hover {
+  transform: translate(-50%, -50%) scale(1.15) !important;
 }
 
 /* Controles nativos do editor (header, toolbar, zoom) */
@@ -514,13 +593,15 @@
   .editor-panel-in,
   .editor-mode-in,
   .editor-panel-shell--open .editor-panel-body,
-  .editor-canvas-flash {
+  .editor-canvas-flash,
+  .editor-toast {
     animation: none !important;
   }
 
   .dash-project-card,
   .dash-project-thumb,
   .editor-mode-tab,
+  .editor-mode-pill,
   .editor-panel-shell,
   .btn-hover,
   [data-slot="button"] {

@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Tooltip,
   TooltipContent,
@@ -22,41 +21,57 @@ type ToolbarProps = {
   setTool: (tool: Tool) => void;
   currentMode: Mode;
   onAutoLayout: () => void;
+  /** Lógico/físico derivados: só seleção (sem editar estrutura). */
   derivedReadOnly?: boolean;
 };
 
-type ToolIcon = ComponentType<{
-  size?: number;
-  className?: string;
-  strokeWidth?: number;
-}>;
-
-const ToolTipButton = ({
-  value,
-  label,
-  icon: Icon,
-  className,
-}: {
-  value: string;
+type ToolbarButtonProps = {
+  icon: ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
   label: string;
-  icon: ToolIcon;
-  className?: string;
-}) => (
+  shortcut?: string;
+  active?: boolean;
+  onClick: () => void;
+  color?: string;
+  tipSide?: 'right' | 'top';
+};
+
+const ToolbarButton = ({
+  icon: Icon,
+  label,
+  shortcut,
+  active,
+  onClick,
+  color,
+  tipSide = 'right',
+}: ToolbarButtonProps) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <ToggleGroupItem
-        value={value}
-        aria-label={label}
+      <Button
+        type="button"
+        variant={active ? 'default' : 'ghost'}
+        size="icon"
+        onClick={onClick}
+        aria-label={shortcut ? `${label} (${shortcut})` : label}
+        aria-pressed={active}
         className={cn(
-          'size-11 rounded-xl data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm data-[state=on]:shadow-primary/25',
-          className,
+          'group relative size-10 sm:size-11 rounded-xl shrink-0',
+          active && 'shadow-sm shadow-primary/25',
         )}
       >
-        <Icon size={20} strokeWidth={2.1} />
-      </ToggleGroupItem>
+        <Icon
+          size={20}
+          className={active ? undefined : color}
+          strokeWidth={2.1}
+        />
+      </Button>
     </TooltipTrigger>
-    <TooltipContent side="right" sideOffset={10}>
-      {label}
+    <TooltipContent side={tipSide} className="flex items-center gap-2">
+      <span>{label}</span>
+      {shortcut ? (
+        <kbd className="rounded border border-background/25 bg-background/15 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
+          {shortcut}
+        </kbd>
+      ) : null}
     </TooltipContent>
   </Tooltip>
 );
@@ -68,70 +83,129 @@ export const Toolbar = ({
   onAutoLayout,
   derivedReadOnly = false,
 }: ToolbarProps) => (
-  <aside className="editor-chrome absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 flex flex-col gap-1 p-1.5 rounded-2xl z-10 select-none">
-    <ToggleGroup
-      type="single"
-      value={derivedReadOnly ? 'select' : tool}
-      onValueChange={(v) => {
-        if (v) setTool(v as Tool);
-      }}
-      orientation="vertical"
-      className="flex flex-col gap-1"
-    >
-      <ToolTipButton value="select" label="Selecionar" icon={MousePointer2} />
+  <aside
+    className={cn(
+      'editor-chrome z-10 select-none',
+      /* Desktop: vertical flutuante à esquerda */
+      'hidden md:flex absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 flex-col gap-1 p-1.5 rounded-2xl',
+    )}
+  >
+    <ToolbarButton
+      icon={MousePointer2}
+      label="Selecionar"
+      shortcut="V"
+      active={tool === 'select'}
+      onClick={() => setTool('select')}
+    />
 
-      {derivedReadOnly ? (
-        <p className="max-w-[3.75rem] mx-auto text-[9px] leading-tight text-center text-muted-foreground px-0.5 py-1.5">
-          Derivado do conceitual
-        </p>
-      ) : (
-        <>
-          <Separator className="w-7 mx-auto my-0.5" />
-
-          {currentMode === MODES.CONCEPTUAL && (
-            <>
-              <ToolTipButton
-                value="entity"
-                label="Entidade"
-                icon={Square}
-                className="text-emerald-600 data-[state=on]:text-primary-foreground"
-              />
-              <ToolTipButton
-                value="relationship"
-                label="Relacionamento"
-                icon={Diamond}
-                className="text-rose-500 data-[state=on]:text-primary-foreground"
-              />
-              <Separator className="w-7 mx-auto my-0.5" />
-            </>
-          )}
-
-          <ToolTipButton value="connection" label="Conectar" icon={Minus} />
-        </>
-      )}
-    </ToggleGroup>
-
-    {!derivedReadOnly && (
+    {derivedReadOnly ? (
+      <p className="max-w-[3.75rem] mx-auto text-[9px] leading-tight text-center text-muted-foreground px-0.5 py-1.5">
+        Derivado do conceitual
+      </p>
+    ) : (
       <>
         <Separator className="w-7 mx-auto my-0.5" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onAutoLayout}
-              aria-label="Auto layout"
-              className="size-11 rounded-xl text-violet-600"
-            >
-              <LayoutGrid strokeWidth={2.1} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10}>
-            Auto layout
-          </TooltipContent>
-        </Tooltip>
+
+        {currentMode === MODES.CONCEPTUAL && (
+          <>
+            <ToolbarButton
+              icon={Square}
+              label="Entidade"
+              shortcut="E"
+              active={tool === 'entity'}
+              onClick={() => setTool('entity')}
+              color="text-emerald-600"
+            />
+            <ToolbarButton
+              icon={Diamond}
+              label="Relacionamento"
+              shortcut="R"
+              active={tool === 'relationship'}
+              onClick={() => setTool('relationship')}
+              color="text-rose-500"
+            />
+            <Separator className="w-7 mx-auto my-0.5" />
+          </>
+        )}
+
+        <ToolbarButton
+          icon={Minus}
+          label="Conectar"
+          shortcut="C"
+          active={tool === 'connection'}
+          onClick={() => setTool('connection')}
+        />
+        <Separator className="w-7 mx-auto my-0.5" />
+        <ToolbarButton
+          icon={LayoutGrid}
+          label="Auto layout"
+          onClick={onAutoLayout}
+          color="text-violet-600"
+        />
       </>
     )}
   </aside>
+);
+
+/** Barra horizontal inferior (mobile). */
+export const MobileToolbar = ({
+  tool,
+  setTool,
+  currentMode,
+  onAutoLayout,
+  derivedReadOnly = false,
+}: ToolbarProps) => (
+  <div className="md:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-20 w-[min(100%-1.5rem,24rem)]">
+    <div className="editor-chrome rounded-2xl p-1.5 flex items-center justify-center gap-0.5 overflow-x-auto">
+      <ToolbarButton
+        tipSide="top"
+        icon={MousePointer2}
+        label="Selecionar"
+        shortcut="V"
+        active={tool === 'select'}
+        onClick={() => setTool('select')}
+      />
+      {!derivedReadOnly && currentMode === MODES.CONCEPTUAL && (
+        <>
+          <ToolbarButton
+            tipSide="top"
+            icon={Square}
+            label="Entidade"
+            shortcut="E"
+            active={tool === 'entity'}
+            onClick={() => setTool('entity')}
+            color="text-emerald-600"
+          />
+          <ToolbarButton
+            tipSide="top"
+            icon={Diamond}
+            label="Relacionamento"
+            shortcut="R"
+            active={tool === 'relationship'}
+            onClick={() => setTool('relationship')}
+            color="text-rose-500"
+          />
+        </>
+      )}
+      {!derivedReadOnly && (
+        <>
+          <ToolbarButton
+            tipSide="top"
+            icon={Minus}
+            label="Conectar"
+            shortcut="C"
+            active={tool === 'connection'}
+            onClick={() => setTool('connection')}
+          />
+          <ToolbarButton
+            tipSide="top"
+            icon={LayoutGrid}
+            label="Auto layout"
+            onClick={onAutoLayout}
+            color="text-violet-600"
+          />
+        </>
+      )}
+    </div>
+  </div>
 );

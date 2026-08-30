@@ -83,7 +83,7 @@ Cada modo tem persistência própria em `diagrams`. Conceitual e lógico usam ca
 - **Limites / sanitização** (`config/limits.ts` + `lib/sanitizeDiagram.ts`): máx. 2 MB; nós/arestas com allowlist de campos (sem `style` arbitrário do JSON); caps por diagrama
 - `normalizeRoomData` sempre passa diagramas por `sanitizeModeDiagram`
 - DDL em `lib/sql.ts` usa identificadores entre aspas e tipos allowlisted
-- **Editor:** Exportar / Importar no header — import substitui os três diagramas da sala atual (com confirmação)
+- **Editor** — Exportar / Importar no menu ⋯ do header — import substitui os três diagramas da sala atual (com confirmação); nome do projeto renomeável (`renameProject`)
 - **Dashboard:** Importar JSON cria um projeto novo e abre o editor
 - Download/leitura de arquivo: `lib/fileTransfer.ts` (rejeita arquivo acima do limite antes de ler)
 
@@ -164,10 +164,10 @@ Posição da cadeia Tab: `positionRightOf`.
 - Logo em `public/logo.svg` (+ `public/logo.png` para fallback de favicon): tile indigo com marca ER (entidade → relacionamento, atributo-chave Heuser, “+” do Plus).
 - Favicon em `index.html`; mesma marca no header do dashboard e do editor (`import.meta.env.BASE_URL + 'logo.svg'`).
 - Tipografia global: **Sora** (Google Fonts).
-- **UI kit:** shadcn/ui em `src/components/ui` — `Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`, `Tabs`, `ToggleGroup`, `Tooltip`, `Dialog` (+ `PropertyInput` composto). `TooltipProvider` no `App`. Controles compartilham tokens CSS (`--primary`, etc.).
+- **UI kit:** shadcn/ui em `src/components/ui` — `Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`, `Switch`, `DropdownMenu`, `Tabs`, `ToggleGroup`, `Tooltip`, `Dialog` (+ `PropertyInput`). `TooltipProvider` no `App`. Controles compartilham tokens CSS (`--primary`, etc.).
 - **Dashboard** (`DashboardScreen`): hero + CTAs; **Dialog** para criar projeto; **Card** nos projetos/empty state; fundo atmosférico + Lenis.
-- **Editor:** modos via **Tabs**; ferramentas via **ToggleGroup** + **Tooltip**; zoom com Tooltip; chip de cardinalidade = **Button** xs; nós/edges alinhados a tokens (`bg-card`, `border-primary`, Badge PK/FK); painel com Select; visão SQL com Badge + Button.
-- **Efeitos:** `CustomCursor` (tokens primary; desligado em touch / reduced-motion / canvas / dialogs); Lenis em `SmoothScroll`; alias `@/` + `cn`.
+- **Editor:** header workspace (nome editável, indicador de salvo, menu ⋯ import/export + tema); tabs de modo com pill deslizante; toolbar desktop vertical + mobile horizontal; atalhos V/E/R/C; status bar; toasts; painel com Switch/Select (bottom sheet no mobile); nós Heuser com hover/seleção expressivos; grade pontilhada; feedback de conexão; SQL físico com highlight (`lib/sqlHighlight.tsx`) + linhas.
+- **Efeitos:** `CustomCursor` (tokens primary; desligado em touch / reduced-motion / canvas / dialogs); Lenis em `SmoothScroll`; tema claro/escuro (`lib/theme.ts` + `.dark`); alias `@/` + `cn`.
 
 ## Deploy
 

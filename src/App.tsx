@@ -1,9 +1,12 @@
 import { useAuth } from './hooks/useAuth';
 import { setRoomInUrl } from './lib/utils';
+import { applyTheme, getStoredTheme } from './lib/theme';
 import { CustomCursor } from './components/effects/CustomCursor';
 import { DashboardScreen } from './components/dashboard/DashboardScreen';
 import { EditorScreen } from './components/editor/EditorScreen';
 import { TooltipProvider } from '@/components/ui/tooltip';
+
+applyTheme(getStoredTheme());
 
 export default function App() {
   const { user, roomId, setRoomId } = useAuth();

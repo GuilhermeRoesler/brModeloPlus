@@ -13,13 +13,17 @@ export const NodeHandles = () => {
     left: '50%',
     top: '50%',
     transform: 'translate(-50%, -50%)',
-    width: 12,
-    height: 12,
-    border: '2px solid white',
-    background: '#6366f1',
+    width: connectable ? 16 : 12,
+    height: connectable ? 16 : 12,
+    border: '2.5px solid var(--background)',
+    background: 'var(--primary)',
     opacity: connectable ? 1 : 0,
     pointerEvents: connectable ? 'auto' : 'none',
     zIndex: 10,
+    boxShadow: connectable
+      ? '0 0 0 4px color-mix(in oklab, var(--primary) 28%, transparent)'
+      : undefined,
+    transition: 'width 0.15s ease, height 0.15s ease, box-shadow 0.15s ease',
   };
 
   return (
@@ -28,6 +32,7 @@ export const NodeHandles = () => {
       type="source"
       position={Position.Top}
       isConnectable={connectable}
+      className={connectable ? 'editor-connect-handle' : undefined}
       style={style}
     />
   );

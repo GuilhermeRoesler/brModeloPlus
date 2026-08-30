@@ -48,7 +48,7 @@ import {
   suggestExportFilename,
 } from '../../lib/projectFile';
 import { generateId } from '../../lib/utils';
-import { findProjectByRoomId } from '../../services/projects';
+import { findProjectByRoomId, renameProject } from '../../services/projects';
 import {
   MODES,
   NODE_TYPES,
@@ -64,9 +64,11 @@ import {
 } from '../../types';
 import { CanvasBoard } from './CanvasBoard';
 import { EditorHeader } from './EditorHeader';
+import { EditorStatusBar } from './EditorStatusBar';
+import { EditorToast, type ToastMessage } from './EditorToast';
 import { PhysicalSqlView } from './PhysicalSqlView';
 import { PropertiesPanel } from './PropertiesPanel';
-import { Toolbar } from './Toolbar';
+import { MobileToolbar, Toolbar } from './Toolbar';
 
 type EditorScreenProps = {
   user: AppUser;
@@ -84,7 +86,7 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
   const zoom = useStore((s) => s.transform[2]);
 
   return (
-    <div className="absolute bottom-4 left-3 sm:left-4 flex gap-2 z-10">
+    <div className="absolute bottom-14 md:bottom-4 left-3 sm:left-4 flex gap-2 z-10">
       <div className="editor-chrome rounded-xl p-1 flex items-center gap-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -194,11 +196,43 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const [roomReady, setRoomReady] = useState(false);
   const [showMinimap, setShowMinimap] = useState(false);
   const [canvasFlashKey, setCanvasFlashKey] = useState(0);
+  const [projectName, setProjectName] = useState('Projeto');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+  const toastIdRef = useRef(0);
 
-  const projectName = useMemo(
-    () => findProjectByRoomId(roomId)?.name?.trim() || 'Projeto',
-    [roomId, roomReady],
-  );
+  const showToast = useCallback((text: string, tone: ToastMessage['tone'] = 'success') => {
+    toastIdRef.current += 1;
+    setToast({ id: toastIdRef.current, text, tone });
+  }, []);
+
+  const markSaved = useCallback(() => {
+    setLastSavedAt(Date.now());
+  }, []);
+
+  useEffect(() => {
+    const name = findProjectByRoomId(roomId)?.name?.trim() || 'Projeto';
+    setProjectName(name);
+  }, [roomId, roomReady]);
+
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (lastSavedAt == null) return;
+    const id = window.setInterval(() => setTick((n) => n + 1), 4000);
+    return () => window.clearInterval(id);
+  }, [lastSavedAt]);
+
+  const saveLabel = useMemo(() => {
+    if (!roomReady) return 'Carregando…';
+    if (lastSavedAt == null) return 'Pronto';
+    const sec = Math.max(0, Math.floor((Date.now() - lastSavedAt) / 1000));
+    if (sec < 4) return 'Salvo agora';
+    if (sec < 60) return `Salvo há ${sec}s`;
+    const min = Math.floor(sec / 60);
+    return `Salvo há ${min} min`;
+    // tick força reavaliação do texto relativo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomReady, lastSavedAt, tick]);
 
   useEffect(() => {
     document.title = `${projectName} · BrModeloPlus`;
@@ -206,6 +240,12 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       document.title = 'BrModeloPlus';
     };
   }, [projectName]);
+
+  const handleRenameProject = (name: string) => {
+    const next = renameProject(roomId, name);
+    setProjectName(next);
+    showToast('Projeto renomeado');
+  };
 
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -243,8 +283,9 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
         mode: activeMode,
         version: ROOM_VERSION,
       });
+      markSaved();
     },
-    [roomId],
+    [roomId, markSaved],
   );
 
   const applyRoomData = useCallback(
@@ -270,10 +311,11 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
           mode: data.mode,
           version: ROOM_VERSION,
         });
+        markSaved();
       }
       if (fit) setFitRequestId((n) => n + 1);
     },
-    [roomId, setNodes, setEdges],
+    [roomId, setNodes, setEdges, markSaved],
   );
 
   useEffect(() => {
@@ -314,6 +356,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       suggestExportFilename(project?.name, roomId),
       json,
     );
+    showToast('JSON exportado');
   };
 
   const handleImportJson = async (file: File) => {
@@ -326,6 +369,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       const text = await readFileAsText(file);
       const parsed = parseProjectFileJson(text);
       applyRoomData(parsed.room, { persist: true, fit: true });
+      showToast('Diagrama importado');
     } catch (err) {
       const message =
         err instanceof ProjectFileError
@@ -688,13 +732,6 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (modeRef.current !== MODES.CONCEPTUAL) return;
-
-      if (e.key === 'Escape' && editingLabelIdRef.current) {
-        handleInlineLabelEnd(editingLabelIdRef.current);
-        return;
-      }
-
       const target = e.target as HTMLElement | null;
       if (target?.closest?.('[data-inline-label-edit]')) return;
       if (
@@ -704,6 +741,40 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
           target.tagName === 'SELECT' ||
           target.isContentEditable)
       ) {
+        return;
+      }
+
+      // Atalhos de ferramenta (todos os modos canvas)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && modeRef.current !== MODES.PHYSICAL) {
+        const key = e.key.toLowerCase();
+        if (key === 'v') {
+          e.preventDefault();
+          setTool('select');
+          return;
+        }
+        if (modeRef.current === MODES.CONCEPTUAL) {
+          if (key === 'e') {
+            e.preventDefault();
+            setTool('entity');
+            return;
+          }
+          if (key === 'r') {
+            e.preventDefault();
+            setTool('relationship');
+            return;
+          }
+          if (key === 'c') {
+            e.preventDefault();
+            setTool('connection');
+            return;
+          }
+        }
+      }
+
+      if (modeRef.current !== MODES.CONCEPTUAL) return;
+
+      if (e.key === 'Escape' && editingLabelIdRef.current) {
+        handleInlineLabelEnd(editingLabelIdRef.current);
         return;
       }
 
@@ -831,6 +902,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       mode: m,
       version: ROOM_VERSION,
     });
+    markSaved();
     if (m !== MODES.PHYSICAL) requestFit();
   };
 
@@ -838,25 +910,28 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     if (modeRef.current !== MODES.CONCEPTUAL) return;
     void commitDiagram(nodesRef.current, edgesRef.current).then(() => {
       triggerCanvasFlash();
+      showToast('Layout aplicado');
     });
   };
 
   if (!roomReady) {
     return (
-      <div className="editor-shell w-full h-screen flex flex-col items-center justify-center gap-3 text-slate-500 text-sm">
-        <span className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      <div className="editor-shell w-full h-screen flex flex-col items-center justify-center gap-3 text-muted-foreground text-sm">
+        <span className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
         Carregando diagrama…
       </div>
     );
   }
 
   return (
-    <div className="editor-shell w-full h-screen flex flex-col overflow-hidden text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="editor-shell w-full h-screen flex flex-col overflow-hidden text-foreground selection:bg-primary/15 selection:text-foreground">
       <EditorHeader
         mode={mode}
         projectName={projectName}
+        saveLabel={saveLabel}
         onBack={onBack}
         onChangeMode={handleChangeMode}
+        onRenameProject={handleRenameProject}
         onExportJson={handleExportJson}
         onImportJson={(file) => {
           void handleImportJson(file);
@@ -865,11 +940,14 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
       {mode === MODES.PHYSICAL ? (
         <div key="physical" className="editor-mode-in flex-1 flex flex-col min-h-0">
-          <PhysicalSqlView nodes={nodes} />
+          <PhysicalSqlView
+            nodes={nodes}
+            onCopied={() => showToast('SQL copiado')}
+          />
         </div>
       ) : (
         <ReactFlowProvider key={mode}>
-          <div className="editor-mode-in flex-1 flex relative overflow-hidden editor-canvas-bg">
+          <div className="editor-mode-in flex-1 flex relative overflow-hidden editor-canvas-bg min-h-0">
             <Toolbar
               tool={tool}
               setTool={setTool}
@@ -903,6 +981,14 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
               onToggleMinimap={() => setShowMinimap((v) => !v)}
             />
 
+            <MobileToolbar
+              tool={tool}
+              setTool={setTool}
+              currentMode={mode}
+              onAutoLayout={handleAutoLayout}
+              derivedReadOnly={isLogicalReadOnly}
+            />
+
             <PropertiesPanel
               selectedIds={selectedIds}
               nodes={nodes}
@@ -923,6 +1009,15 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
           </div>
         </ReactFlowProvider>
       )}
+
+      <EditorStatusBar
+        mode={mode}
+        nodeCount={nodes.length}
+        edgeCount={edges.length}
+        saveLabel={saveLabel}
+      />
+
+      <EditorToast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 };

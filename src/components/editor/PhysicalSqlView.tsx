@@ -3,20 +3,32 @@ import { Check, Code, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { generateSQL } from '../../lib/sql';
+import { highlightSql, sqlLineCount } from '../../lib/sqlHighlight';
 import type { ErNode } from '../../types';
+import { NODE_TYPES } from '../../types';
 
 type PhysicalSqlViewProps = {
   nodes: ErNode[];
+  onCopied?: () => void;
 };
 
-/** Modo físico: editor de texto SQL (read-only), gerado a partir das tabelas do lógico. */
-export const PhysicalSqlView = ({ nodes }: PhysicalSqlViewProps) => {
+/** Modo físico: SQL DDL com highlight leve (read-only). */
+export const PhysicalSqlView = ({ nodes, onCopied }: PhysicalSqlViewProps) => {
   const [copied, setCopied] = useState(false);
+  const tableCount = useMemo(
+    () => nodes.filter((n) => n.type === NODE_TYPES.TABLE).length,
+    [nodes],
+  );
   const sqlCode = useMemo(() => generateSQL(nodes), [nodes]);
+  const isEmpty = tableCount === 0;
+  const lineCount = sqlLineCount(sqlCode);
+  const highlighted = useMemo(() => highlightSql(sqlCode), [sqlCode]);
 
   const handleCopy = () => {
+    if (isEmpty) return;
     void navigator.clipboard.writeText(sqlCode);
     setCopied(true);
+    onCopied?.();
     window.setTimeout(() => setCopied(false), 2000);
   };
 
@@ -46,6 +58,7 @@ export const PhysicalSqlView = ({ nodes }: PhysicalSqlViewProps) => {
           size="sm"
           variant={copied ? 'secondary' : 'default'}
           onClick={handleCopy}
+          disabled={isEmpty}
           className={`rounded-xl gap-2 text-xs font-semibold ${
             copied ? 'bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white' : ''
           }`}
@@ -63,13 +76,44 @@ export const PhysicalSqlView = ({ nodes }: PhysicalSqlViewProps) => {
       </div>
 
       <div className="flex-1 min-h-0 p-4 md:p-6">
-        <textarea
-          readOnly
-          value={sqlCode}
-          spellCheck={false}
-          aria-label="SQL DDL gerado"
-          className="w-full h-full resize-none rounded-2xl border border-border/90 bg-background/95 text-foreground font-mono text-sm leading-relaxed p-5 outline-none focus-visible:ring-2 focus-visible:ring-ring/25 caret-transparent selection:bg-primary/15 selection:text-foreground"
-        />
+        {isEmpty ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="editor-chrome editor-panel-in max-w-sm text-center px-6 py-8 rounded-2xl">
+              <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <Code size={26} />
+              </div>
+              <h3 className="text-sm font-bold text-foreground mb-2">
+                Nenhum SQL ainda
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Modele entidades e relacionamentos no modo conceitual — o DDL aparece
+                aqui automaticamente a partir do lógico.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full rounded-2xl border border-border/90 bg-background/95 overflow-hidden flex shadow-sm">
+            <div
+              aria-hidden
+              className="shrink-0 w-11 sm:w-12 bg-muted/40 border-r border-border/70 py-5 text-right select-none overflow-hidden"
+            >
+              {Array.from({ length: lineCount }, (_, i) => (
+                <div
+                  key={i}
+                  className="h-[1.375rem] leading-[1.375rem] pr-2.5 text-[11px] font-mono text-muted-foreground/70 tabular-nums"
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            <pre
+              aria-label="SQL DDL gerado"
+              className="flex-1 min-w-0 overflow-auto p-5 m-0 font-mono text-sm leading-[1.375rem] text-foreground selection:bg-primary/15"
+            >
+              <code>{highlighted}</code>
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -12,7 +12,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { PropertyInput } from '../ui/PropertyInput';
+import { cn } from '@/lib/utils';
 import { generateId } from '../../lib/utils';
 import {
   CARDINALITY_OPTIONS,
@@ -24,6 +27,7 @@ import {
   type ErEdge,
   type ErNode,
   type ErNodeData,
+  type NodeType,
   type TableColumn,
 } from '../../types';
 
@@ -35,6 +39,28 @@ type PropertiesPanelProps = {
   updateEdge: (id: string, changes: Partial<NonNullable<ErEdge['data']>>) => void;
   deleteSelected: (idOverride?: string | null) => void;
   readOnly?: boolean;
+};
+
+const TYPE_LABELS: Record<NodeType, string> = {
+  entity: 'Entidade',
+  relationship: 'Relacionamento',
+  attribute: 'Atributo',
+  table: 'Tabela',
+};
+
+const countByType = (nodes: ErNode[], edges: ErEdge[], ids: string[]) => {
+  const counts: Record<string, number> = {};
+  for (const id of ids) {
+    const n = nodes.find((x) => x.id === id);
+    if (n?.type) {
+      counts[n.type] = (counts[n.type] ?? 0) + 1;
+      continue;
+    }
+    if (edges.some((e) => e.id === id)) {
+      counts.edge = (counts.edge ?? 0) + 1;
+    }
+  }
+  return counts;
 };
 
 export const PropertiesPanel = ({
@@ -66,15 +92,31 @@ export const PropertiesPanel = ({
   let body: ReactNode = null;
 
   if (selectedIds.length > 1) {
+    const counts = countByType(nodes, edges, selectedIds);
+    const summary = [
+      counts.entity ? `${counts.entity} entidade${counts.entity > 1 ? 's' : ''}` : null,
+      counts.relationship
+        ? `${counts.relationship} relacionamento${counts.relationship > 1 ? 's' : ''}`
+        : null,
+      counts.attribute
+        ? `${counts.attribute} atributo${counts.attribute > 1 ? 's' : ''}`
+        : null,
+      counts.table ? `${counts.table} tabela${counts.table > 1 ? 's' : ''}` : null,
+      counts.edge ? `${counts.edge} ${counts.edge > 1 ? 'ligações' : 'ligação'}` : null,
+    ].filter(Boolean);
+
     body = (
       <div className="p-6 flex flex-col justify-center items-center text-center h-full">
-        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-4">
+        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4">
           <Users size={22} />
         </div>
-        <h3 className="text-slate-800 font-bold mb-1">
+        <h3 className="text-foreground font-bold mb-1">
           {selectedIds.length} itens selecionados
         </h3>
-        <p className="text-slate-500 text-xs mb-6 leading-relaxed">
+        <p className="text-muted-foreground text-xs mb-2 leading-relaxed">
+          {summary.join(' · ') || 'Seleção mista'}
+        </p>
+        <p className="text-muted-foreground text-[11px] mb-6 leading-relaxed">
           Propriedades em massa indisponíveis.
         </p>
         {!readOnly && (
@@ -94,7 +136,7 @@ export const PropertiesPanel = ({
       <>
         <div className="p-5 sm:p-6 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.14em]">
+            <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.14em]">
               Propriedades
             </h2>
             <Button
@@ -110,7 +152,7 @@ export const PropertiesPanel = ({
           </div>
 
           {readOnly && (
-            <p className="mb-4 text-[11px] leading-relaxed text-amber-800 bg-amber-50/90 border border-amber-100 rounded-xl px-3 py-2">
+            <p className="mb-4 text-[11px] leading-relaxed text-amber-900 dark:text-amber-100 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50 rounded-xl px-3 py-2">
               Visão derivada do conceitual — edite no modo conceitual para atualizar.
             </p>
           )}
@@ -118,17 +160,19 @@ export const PropertiesPanel = ({
           {selectedNode && (
             <div className="space-y-5">
               <div className="flex items-center gap-3 mb-1">
-                <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 shrink-0">
+                <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0">
                   {selectedNode.type === NODE_TYPES.ENTITY && <Square size={22} />}
                   {selectedNode.type === NODE_TYPES.RELATIONSHIP && <Diamond size={22} />}
                   {selectedNode.type === NODE_TYPES.ATTRIBUTE && <Circle size={22} />}
                   {selectedNode.type === NODE_TYPES.TABLE && <TableIcon size={22} />}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] text-slate-500 font-medium capitalize">
-                    {selectedNode.type}
-                  </p>
-                  <p className="font-bold text-slate-800 text-base truncate">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="rounded-md text-[10px] font-semibold">
+                      {TYPE_LABELS[selectedNode.type as NodeType] ?? selectedNode.type}
+                    </Badge>
+                  </div>
+                  <p className="font-bold text-foreground text-base truncate mt-1">
                     {selectedNode.data.label}
                   </p>
                 </div>
@@ -142,14 +186,18 @@ export const PropertiesPanel = ({
               />
 
               {selectedNode.type === NODE_TYPES.ENTITY && (
-                <div className="flex items-center justify-between p-3 bg-slate-50/90 rounded-xl border border-slate-100">
-                  <span className="text-sm font-medium text-slate-700">Entidade fraca?</span>
-                  <input
-                    type="checkbox"
+                <div className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-xl border border-border/80">
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium text-foreground">Entidade fraca</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Depende de outra entidade para existência
+                    </p>
+                  </div>
+                  <Switch
+                    checked={Boolean(selectedNode.data.isWeak)}
                     disabled={readOnly}
-                    checked={selectedNode.data.isWeak || false}
-                    onChange={(e) => handleUpdate('isWeak', e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                    onCheckedChange={(v) => handleUpdate('isWeak', v)}
+                    aria-label="Entidade fraca"
                   />
                 </div>
               )}
@@ -198,7 +246,7 @@ export const PropertiesPanel = ({
                     {selectedNode.data.columns?.map((col) => (
                       <div
                         key={col.id}
-                        className="p-2 bg-muted/50 rounded-lg border border-border/80 flex flex-col gap-2"
+                        className="p-2.5 bg-muted/40 rounded-xl border border-border/80 flex flex-col gap-2.5"
                       >
                         <div className="flex gap-2">
                           <Input
@@ -220,7 +268,9 @@ export const PropertiesPanel = ({
                               size="icon-xs"
                               onClick={() =>
                                 handleUpdateTableCol(
-                                  (selectedNode.data.columns || []).filter((c) => c.id !== col.id),
+                                  (selectedNode.data.columns || []).filter(
+                                    (c) => c.id !== col.id,
+                                  ),
                                 )
                               }
                               className="text-destructive rounded-lg"
@@ -229,7 +279,7 @@ export const PropertiesPanel = ({
                             </Button>
                           )}
                         </div>
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-3 items-center flex-wrap">
                           <Input
                             value={col.type}
                             disabled={readOnly}
@@ -240,37 +290,39 @@ export const PropertiesPanel = ({
                                 ),
                               )
                             }
-                            className="h-8 flex-1 rounded-lg text-xs text-muted-foreground"
+                            className="h-8 flex-1 min-w-[5rem] rounded-lg text-xs text-muted-foreground"
                           />
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              disabled={readOnly}
+                          <label className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
+                            <Switch
                               checked={Boolean(col.isPk)}
-                              onChange={(e) =>
-                                handleUpdateTableCol(
-                                  (selectedNode.data.columns || []).map((c) =>
-                                    c.id === col.id ? { ...c, isPk: e.target.checked } : c,
-                                  ),
-                                )
-                              }
-                            />
-                            <span className="text-[10px] font-bold text-muted-foreground">PK</span>
-                          </label>
-                          <label className="flex items-center gap-1">
-                            <input
-                              type="checkbox"
                               disabled={readOnly}
-                              checked={Boolean(col.isFk)}
-                              onChange={(e) =>
+                              onCheckedChange={(v) =>
                                 handleUpdateTableCol(
                                   (selectedNode.data.columns || []).map((c) =>
-                                    c.id === col.id ? { ...c, isFk: e.target.checked } : c,
+                                    c.id === col.id ? { ...c, isPk: v } : c,
                                   ),
                                 )
                               }
+                              className="scale-90"
+                              aria-label="Chave primária"
                             />
-                            <span className="text-[10px] font-bold text-muted-foreground">FK</span>
+                            PK
+                          </label>
+                          <label className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
+                            <Switch
+                              checked={Boolean(col.isFk)}
+                              disabled={readOnly}
+                              onCheckedChange={(v) =>
+                                handleUpdateTableCol(
+                                  (selectedNode.data.columns || []).map((c) =>
+                                    c.id === col.id ? { ...c, isFk: v } : c,
+                                  ),
+                                )
+                              }
+                              className="scale-90"
+                              aria-label="Chave estrangeira"
+                            />
+                            FK
                           </label>
                         </div>
                       </div>
@@ -284,12 +336,14 @@ export const PropertiesPanel = ({
           {selectedEdge && (
             <div className="space-y-5">
               <div className="flex items-center gap-3 mb-1">
-                <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
+                <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
                   <Minus size={22} className="rotate-45" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-slate-500 font-medium">Conexão</p>
-                  <p className="font-bold text-slate-800 text-base">Ligação</p>
+                  <Badge variant="secondary" className="rounded-md text-[10px] font-semibold">
+                    Ligação
+                  </Badge>
+                  <p className="font-bold text-foreground text-base mt-1">Conexão</p>
                 </div>
               </div>
               {(() => {
@@ -343,7 +397,7 @@ export const PropertiesPanel = ({
                 );
               })()}
               {!readOnly && (
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Dica: no canvas, clique no chip da aresta para alternar 1, N, (0,1)…
                 </p>
               )}
@@ -369,15 +423,16 @@ export const PropertiesPanel = ({
 
   return (
     <aside
-      className={`editor-chrome editor-panel-shell z-20 flex flex-col h-full rounded-none border-y-0 border-r-0 border-l border-slate-200/80 ${
-        isOpen ? 'editor-panel-shell--open' : ''
-      }`}
+      className={cn(
+        'editor-chrome editor-panel-shell z-30 flex flex-col overflow-hidden',
+        isOpen && 'editor-panel-shell--open',
+      )}
       aria-hidden={!isOpen}
     >
       {isOpen && (
         <div
           key={selectedIds.join('-')}
-          className="editor-panel-body w-80 min-w-[20rem] h-full flex flex-col overflow-hidden"
+          className="editor-panel-body w-full h-full flex flex-col overflow-hidden"
         >
           {body}
         </div>

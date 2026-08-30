@@ -11,19 +11,22 @@
 - **3 modos de modelagem** — conceitual e lógico com canvas próprios; físico é editor SQL (read-only) derivado do lógico
   - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (haste vertical sob o dono, círculo + rótulo à direita; chave / derivado / multivalorado).
   - **Lógico:** tabelas/FKs geradas a partir do conceitual (somente leitura estrutural).
-  - **Físico:** SQL DDL gerado automaticamente (textarea somente leitura + copiar).
+  - **Físico:** SQL DDL gerado automaticamente (syntax highlight + numeração de linhas + copiar).
 - **Editor**
-  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto. Controles de zoom + ajustar à tela + minimapa opcional; empty state e dicas de atalho (Enter/Tab) no canvas; nome do projeto no header.
-  - Painel de propriedades.
+  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto. Controles de zoom + ajustar à tela + minimapa opcional; empty state ilustrado e dicas de atalho no canvas; grade pontilhada; status bar (modo · nós · arestas · salvo).
+  - **Header workspace:** nome do projeto editável, indicador de salvo, tabs Conceitual·Lógico·Físico com pill animado, menu ⋯ (import/export JSON + tema claro/escuro).
+  - Painel de propriedades (switches, resumo em multi-seleção); no mobile abre como bottom sheet.
+  - Toolbar com atalhos **V** (selecionar), **E** (entidade), **R** (relacionamento), **C** (conectar); no mobile fica horizontal na base.
   - **Auto layout** (**ELK.js stress** nos nós estruturais; atributos Heuser em cascata sob o dono).
-  - **Conectar:** arrastar handle→handle (modo Conectar).
+  - **Conectar:** arrastar handle→handle com preview tracejado e highlight nos nós.
   - **Cardinalidade:** chips nas arestas (clique para ciclar 1, N, (0,1)…); em entidade↔relacionamento o valor fica no lado da entidade. Também editável no painel ao selecionar a aresta.
   - **Enter** (modo conceitual): cria atributo ligado abaixo do dono com edição inline do nome.
   - **Tab** (modo conceitual): com entidade selecionada, cria relacionamento já conectado à direita (edição inline); Tab de novo cria a próxima entidade interligada.
-- **Geração de SQL:** modo físico exibe `CREATE TABLE` completo (mesmo conteúdo da antiga aba SQL).
+  - Toasts leves para import/export, layout, cópia de SQL e renomear.
+- **Geração de SQL:** modo físico exibe `CREATE TABLE` completo com highlight.
 - **Import / export JSON:** baixar ou carregar o projeto (conceitual + lógico + físico). No dashboard, importar cria um projeto novo; no editor, importar substitui a sala atual. Arquivos são validados (tamanho máx. 2 MB; schema sanitizado).
-- **Projetos:** criar, listar e excluir diagramas (`localStorage`). Dashboard com hero da marca (entrada escalonada), fundo atmosférico animado e cards com miniatura ER e hover.
-- **UI:** shadcn/ui (`Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`, `Tabs`, `ToggleGroup`, `Tooltip`, `Dialog`) no dashboard e no editor; nós do canvas usam os mesmos tokens; chip de cardinalidade é Button.
+- **Projetos:** criar, listar, renomear (no editor) e excluir diagramas (`localStorage`). Dashboard com hero da marca (entrada escalonada), fundo atmosférico animado e cards com miniatura ER e hover.
+- **UI:** shadcn/ui (`Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`, `Switch`, `DropdownMenu`, `Tabs`, `ToggleGroup`, `Tooltip`, `Dialog`) no dashboard e no editor; nós do canvas usam os mesmos tokens; tema claro/escuro persistido.
 - **Motion / feedback:** Lenis no dashboard; cursor customizado (tokens); hover shadcn; Tabs de modo e painel animados; flash ao criar nó / auto layout. Respeita `prefers-reduced-motion`.
 
 ## Tecnologias
@@ -75,14 +78,14 @@ public/
 src/
   App.tsx                 # Roteador (dashboard → editor) + CustomCursor
   components/
-    ui/                   # shadcn (button, input, select, card, badge, separator, tabs, toggle-group, tooltip, dialog) + PropertyInput
+    ui/                   # shadcn (button, input, select, card, badge, separator, switch, dropdown-menu, tabs, toggle-group, tooltip, dialog) + PropertyInput
     effects/              # Lenis (SmoothScroll), CustomCursor
     dashboard/            # DashboardScreen
-    editor/               # Editor + React Flow canvas, toolbar, painéis
+    editor/               # Editor + React Flow canvas, toolbar, painéis, status bar, toasts
       flow/               # Nós/edges (tokens shadcn + Heuser)
   config/                 # Constantes e APP_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # SQL, localStorage, sanitizeDiagram, autoLayout/ELK, utils (cn)
+  lib/                    # SQL, sqlHighlight, theme, localStorage, sanitizeDiagram, autoLayout/ELK, utils (cn)
   services/               # Projetos e salas (localStorage)
   hooks/                  # useAuth, useProjects
 ```
