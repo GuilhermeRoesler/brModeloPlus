@@ -6,8 +6,10 @@ import {
   TABLE_MAX_COLUMNS,
 } from '../config/limits';
 import {
+  DATA_TYPES,
   NODE_TYPES,
   type AttrType,
+  type DataType,
   type ErEdge,
   type ErEdgeData,
   type ErNode,
@@ -24,6 +26,7 @@ const ATTR_TYPE_SET = new Set<string>([
   'derived',
   'multivalued',
 ]);
+const DATA_TYPE_SET = new Set<string>(DATA_TYPES);
 
 const asFiniteNumber = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -68,12 +71,13 @@ const sanitizeNodeData = (
     data.isWeak = true;
   }
 
-  if (
-    type === NODE_TYPES.ATTRIBUTE &&
-    typeof raw.attrType === 'string' &&
-    ATTR_TYPE_SET.has(raw.attrType)
-  ) {
-    data.attrType = raw.attrType as AttrType;
+  if (type === NODE_TYPES.ATTRIBUTE) {
+    if (typeof raw.attrType === 'string' && ATTR_TYPE_SET.has(raw.attrType)) {
+      data.attrType = raw.attrType as AttrType;
+    }
+    if (typeof raw.dataType === 'string' && DATA_TYPE_SET.has(raw.dataType)) {
+      data.dataType = raw.dataType as DataType;
+    }
   }
 
   if (type === NODE_TYPES.TABLE) {

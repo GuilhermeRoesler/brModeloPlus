@@ -50,6 +50,7 @@ import {
 import { generateId } from '../../lib/utils';
 import { findProjectByRoomId, renameProject } from '../../services/projects';
 import {
+  DEFAULT_DATA_TYPE,
   MODES,
   NODE_TYPES,
   ROOM_VERSION,
@@ -538,7 +539,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       type: NODE_TYPES.ATTRIBUTE,
       position: topLeft,
       label: '',
-      data: { attrType: 'normal' },
+      data: { attrType: 'normal', dataType: DEFAULT_DATA_TYPE },
     });
     newAttr.selected = true;
 

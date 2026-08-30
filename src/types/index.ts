@@ -19,6 +19,32 @@ export type NodeType = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];
 
 export type AttrType = 'normal' | 'key' | 'derived' | 'multivalued';
 
+/** Tipos SQL allowlisted para atributos (conceitual → coluna no lógico/físico). */
+export const DATA_TYPES = [
+  'INTEGER',
+  'BIGINT',
+  'SMALLINT',
+  'DECIMAL(10,2)',
+  'REAL',
+  'VARCHAR(50)',
+  'VARCHAR(100)',
+  'VARCHAR(255)',
+  'CHAR(1)',
+  'TEXT',
+  'BOOLEAN',
+  'DATE',
+  'TIME',
+  'TIMESTAMP',
+  'UUID',
+] as const;
+
+export type DataType = (typeof DATA_TYPES)[number];
+
+export const DEFAULT_DATA_TYPE: DataType = 'VARCHAR(255)';
+
+export const DATA_TYPE_OPTIONS: { value: DataType; label: string }[] =
+  DATA_TYPES.map((value) => ({ value, label: value }));
+
 export type Tool =
   | 'select'
   | 'entity'
@@ -38,7 +64,10 @@ export interface TableColumn {
 export type ErNodeData = {
   label: string;
   isWeak?: boolean;
+  /** Classificação conceitual (chave, derivado, multivalorado…). */
   attrType?: AttrType;
+  /** Tipo de dado SQL do atributo (propaga para coluna no lógico/físico). */
+  dataType?: DataType;
   columns?: TableColumn[];
 };
 

@@ -94,11 +94,14 @@ Constantes em `src/types/index.ts`:
 - **Modes:** `conceitual` | `logico` | `fisico`
 - **Node types:** `entity` | `relationship` | `attribute` | `table`
 - **Tools:** `select` | `entity` | `relationship` | `table` | `connection`
+- **AttrType (classificação):** `normal` | `key` | `derived` | `multivalued`
+- **DataType (SQL allowlisted):** `INTEGER`, `BIGINT`, `SMALLINT`, `DECIMAL(10,2)`, `REAL`, `VARCHAR(50|100|255)`, `CHAR(1)`, `TEXT`, `BOOLEAN`, `DATE`, `TIME`, `TIMESTAMP`, `UUID` — campo `data.dataType` no atributo; default `VARCHAR(255)`
 
 Tipos canônicos:
 
 - `ErNode` = `Node<ErNodeData, NodeType>` do React Flow (`position`, `data.label`, …)
 - `ErEdge` = `Edge<ErEdgeData>` (`source`/`target`, `data.cardinalitySource|Target`)
+- Atributo: `data.attrType` (papel conceitual) + `data.dataType` (tipo SQL)
 
 Helpers em `lib/diagramFlow.ts`: `createErNode` / `createErEdge`, `findAttributeOwnerId`, `patchNodeData`, `normalizeErNodes`/`normalizeErEdges`.
 
@@ -115,7 +118,8 @@ Modo físico: **editor de texto SQL** (read-only) com o DDL gerado a partir das 
 `lib/deriveRelational.ts` (`deriveRelationalFromConceptual` / `syncDerivedDiagrams`):
 
 - Entidade → tabela; atributo (exceto derivado) → coluna; `key` → PK; sem chave → `id INTEGER`
-- Multivalorado → tabela auxiliar com FK
+- Tipo da coluna = `data.dataType` do atributo (default `VARCHAR(255)`); PK sintética continua `INTEGER`
+- Multivalorado → tabela auxiliar com FK; coluna de valor usa o `dataType` do atributo
 - Relacionamento 1:N → FK no lado N; 1:1 → FK em um lado; N:N / n-ário / sem cardinalidade clara → tabela associativa
 - Atributos do relacionamento → colunas na tabela que recebe a FK / associativa
 - Lógico = canvas de tabelas derivado; físico = visão SQL do mesmo modelo (não é canvas)
@@ -131,6 +135,7 @@ Orquestração em `components/editor/EditorScreen.tsx` (`ReactFlowProvider` nos 
 - **Drag estrutural** — ao mover entidade/relacionamento, atributos ligados (incl. compostos) acompanham o mesmo delta (`followStructuralDrags`); ids já no lote de drag não são deslocados de novo (multi-seleção)
 - **Conexões** — tool `connection`: handle→handle (`ConnectionMode.Loose`)
 - **Cardinalidade** — chips nas arestas estruturais (`CardinalityEdge`), centro do chip **sobre a reta handle→handle** a distância fixa da borda (`cardinalityLabelPoint`); clique cicla `1` / `n` / `(0,1)` / `(1,1)` / `(0,n)` / `(1,n)`; em entidade↔relacionamento (Heuser) o chip fica só no lado da entidade; painel espelha com select (`lib/cardinality.ts`)
+- **Atributo — tipo de dados** — painel: Classificação (`attrType`) + Tipo de dados (`dataType` allowlisted); sanitização em `sanitizeDiagram`; propaga na derivação
 - **Auto layout** (`lib/autoLayout.ts`): **ELK.js stress** nos nós estruturais; atributos Heuser reposicionados em cascata sob o dono
 - **`commitDiagram`**: async; `{ fit?, layout? }` — Enter/conexões usam `layout: false`
 - **Enter (conceitual):** cria atributo ligado **abaixo** do dono (cascata Heuser), edição inline; Esc / blur finaliza

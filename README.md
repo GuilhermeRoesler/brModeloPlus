@@ -9,13 +9,13 @@
 ## Funcionalidades
 
 - **3 modos de modelagem** — conceitual e lógico com canvas próprios; físico é editor SQL (read-only) derivado do lógico
-  - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (haste vertical sob o dono, círculo + rótulo à direita; chave / derivado / multivalorado).
+  - **Conceitual:** entidades (incluindo fracas), relacionamentos e atributos na notação Heuser (haste vertical sob o dono, círculo + rótulo à direita; chave / derivado / multivalorado). Tipo de dados SQL (INTEGER, VARCHAR, DATE…) configurável no painel e propagado para colunas no lógico/físico.
   - **Lógico:** tabelas/FKs geradas a partir do conceitual (somente leitura estrutural).
   - **Físico:** SQL DDL gerado automaticamente (syntax highlight + numeração de linhas + copiar).
 - **Editor**
   - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto. Controles de zoom + ajustar à tela + minimapa opcional; empty state ilustrado e dicas de atalho no canvas; grade pontilhada; status bar (modo · nós · arestas · salvo).
   - **Header workspace:** nome do projeto editável, indicador de salvo, tabs Conceitual·Lógico·Físico com pill animado, menu ⋯ (import/export JSON + tema claro/escuro).
-  - Painel de propriedades (switches, resumo em multi-seleção); no mobile abre como bottom sheet.
+  - Painel de propriedades (classificação e tipo de dados do atributo, switches, resumo em multi-seleção); no mobile abre como bottom sheet.
   - Toolbar com atalhos **V** (selecionar), **E** (entidade), **R** (relacionamento), **C** (conectar); no mobile fica horizontal na base.
   - **Auto layout** (**ELK.js stress** nos nós estruturais; atributos Heuser em cascata sob o dono).
   - **Conectar:** arrastar handle→handle com preview tracejado e highlight nos nós.

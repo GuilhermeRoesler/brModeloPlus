@@ -11,8 +11,10 @@ import {
   normalizeErNodes,
 } from './diagramFlow';
 import {
+  DEFAULT_DATA_TYPE,
   MODES,
   NODE_TYPES,
+  type DataType,
   type ErEdge,
   type ErNode,
   type Mode,
@@ -20,8 +22,11 @@ import {
   type TableColumn,
 } from '../types';
 
-const DEFAULT_COL_TYPE = 'VARCHAR(255)';
-const DEFAULT_PK_TYPE = 'INTEGER';
+const DEFAULT_COL_TYPE: DataType = DEFAULT_DATA_TYPE;
+const DEFAULT_PK_TYPE: DataType = 'INTEGER';
+
+const resolveAttrDataType = (attr: ErNode): DataType =>
+  attr.data?.dataType ?? DEFAULT_COL_TYPE;
 
 const slug = (label: unknown, fallback: string) => {
   const s = String(label ?? '')
@@ -79,7 +84,7 @@ const columnsFromAttributes = (
     cols.push({
       id: colIdForAttr(attr.id),
       name: slug(attr.data?.label, 'atributo'),
-      type: DEFAULT_COL_TYPE,
+      type: resolveAttrDataType(attr),
       isPk: attr.data?.attrType === 'key',
     });
   }
@@ -216,7 +221,7 @@ export const deriveRelationalFromConceptual = (
       const valueCol: TableColumn = {
         id: colIdForAttr(mv.id),
         name: slug(mv.data?.label, 'valor'),
-        type: DEFAULT_COL_TYPE,
+        type: resolveAttrDataType(mv),
       };
       const ownerPk = pkColumnName(columns);
       const ownerSlug = slug(entity.data?.label, 'ent');

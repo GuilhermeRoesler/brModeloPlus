@@ -23,6 +23,8 @@ import {
   entityParticipationSide,
 } from '../../lib/cardinality';
 import {
+  DATA_TYPE_OPTIONS,
+  DEFAULT_DATA_TYPE,
   NODE_TYPES,
   type ErEdge,
   type ErNode,
@@ -203,20 +205,31 @@ export const PropertiesPanel = ({
               )}
 
               {selectedNode.type === NODE_TYPES.ATTRIBUTE && (
-                <PropertyInput
-                  label="Tipo"
-                  type="select"
-                  disabled={readOnly}
-                  value={selectedNode.data.attrType ?? 'normal'}
-                  onChange={(val) => handleUpdate('attrType', val)}
-                  options={[
-                    { value: 'normal', label: 'Normal' },
-                    { value: 'key', label: 'Chave Primária' },
-                    { value: 'derived', label: 'Derivado' },
-                    { value: 'multivalued', label: 'Multivalorado' },
-                  ]}
-                  placeholder="Tipo do atributo"
-                />
+                <>
+                  <PropertyInput
+                    label="Classificação"
+                    type="select"
+                    disabled={readOnly}
+                    value={selectedNode.data.attrType ?? 'normal'}
+                    onChange={(val) => handleUpdate('attrType', val)}
+                    options={[
+                      { value: 'normal', label: 'Normal' },
+                      { value: 'key', label: 'Chave Primária' },
+                      { value: 'derived', label: 'Derivado' },
+                      { value: 'multivalued', label: 'Multivalorado' },
+                    ]}
+                    placeholder="Classificação do atributo"
+                  />
+                  <PropertyInput
+                    label="Tipo de dados"
+                    type="select"
+                    disabled={readOnly}
+                    value={selectedNode.data.dataType ?? DEFAULT_DATA_TYPE}
+                    onChange={(val) => handleUpdate('dataType', val)}
+                    options={DATA_TYPE_OPTIONS}
+                    placeholder="Tipo SQL"
+                  />
+                </>
               )}
 
               {selectedNode.type === NODE_TYPES.TABLE && (
