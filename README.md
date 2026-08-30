@@ -4,7 +4,7 @@
 
 **BrModeloPlus** é uma ferramenta web de modelagem de banco de dados, inspirada no clássico brModelo. Permite criar diagramas ER no navegador com persistência em `localStorage`.
 
-![](public/demo.png)
+![](public/demo1.png)
 
 ## Funcionalidades
 
@@ -28,6 +28,8 @@
 - **Projetos:** criar, listar, renomear (no editor) e excluir diagramas (`localStorage`). Dashboard com hero da marca (entrada escalonada), fundo atmosférico animado e cards com miniatura ER e hover.
 - **UI:** shadcn/ui (`Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`, `Switch`, `DropdownMenu`, `Tabs`, `ToggleGroup`, `Tooltip`, `Dialog`) no dashboard e no editor; nós do canvas usam os mesmos tokens; tema claro/escuro persistido.
 - **Motion / feedback:** Lenis no dashboard; cursor customizado (tokens); hover shadcn; Tabs de modo e painel animados; flash ao criar nó / auto layout. Respeita `prefers-reduced-motion`.
+
+![](public/demo2.png)
 
 ## Tecnologias
 
