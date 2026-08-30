@@ -23,7 +23,7 @@ Esta skill e o `README.md` da raiz **são a spec viva** do produto. Em **toda** 
 ## Fluxo da aplicação
 
 ```
-DashboardScreen → EditorScreen   # LOCAL_USER automático (sem login)
+DashboardScreen → EditorScreen   # APP_USER automático (sem autenticação)
 ```
 
 Roteamento em `src/App.tsx` (sem React Router): estado `user` + `roomId` decide a tela. Query `?room=<id>` reabre a sala.
@@ -33,11 +33,11 @@ Roteamento em `src/App.tsx` (sem React Router): estado `user` + `roomId` decide 
 ```
 src/
   App.tsx                 # roteamento dashboard ↔ editor
-  config/                 # constantes de UI, LOCAL_USER, limits (import)
+  config/                 # constantes de UI, APP_USER, limits (import)
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
   lib/                    # utils puros (SQL, localStorage, projectFile, fileTransfer, sanitizeDiagram, deriveRelational, ids, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality)
-  services/               # persistência local (projects + rooms)
-  hooks/                  # useAuth (local), useProjects
+  services/               # persistência de projects + rooms
+  hooks/                  # useAuth, useProjects
   components/
     dashboard/ | editor/ | ui/
 ```
@@ -48,7 +48,7 @@ src/
 | `hooks/`      | orquestrar services + React state | lógica de layout ELK       |
 | `services/`   | localStorage                      | JSX                        |
 | `lib/`        | funções puras (incl. ELK async)   | React (exceto tipos do RF) |
-| `config/`     | flags / usuário local             | lógica de negócio          |
+| `config/`     | flags / usuário padrão            | lógica de negócio          |
 | `types/`      | tipos e constantes de domínio     | side effects               |
 
 **Regra de ouro:** não recolocar tudo em `App.tsx`. Novas features entram na camada certa.
@@ -180,7 +180,7 @@ Posição da cadeia Tab: `positionRightOf`.
 - TypeScript estrito; `import type` para tipos
 - Sem `enum` — use `as const`
 - UI em português
-- Canvas: **React Flow** + **ELK.js**; persistência local
+- Canvas: **React Flow** + **ELK.js**; persistência via `localStorage`
 - Após mudanças estruturais: `npm run build`
 - **Docs no mesmo passo:** skill + README quando couber
 

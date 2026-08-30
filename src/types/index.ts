@@ -84,7 +84,6 @@ export interface AppUser {
   uid: string;
   email: string | null;
   isAnonymous: boolean;
-  isLocal?: boolean;
 }
 
 export interface Point {

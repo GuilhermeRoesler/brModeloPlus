@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { LOCAL_USER } from '../config/app';
+import { APP_USER } from '../config/app';
 import { getRoomIdFromUrl } from '../lib/utils';
 import type { AppUser } from '../types';
 
-/** Sessão local-only: sempre `LOCAL_USER` (sem login/nuvem). */
+/** Sessão automática: sempre `APP_USER` (sem autenticação). */
 export const useAuth = () => {
-  const [user] = useState<AppUser | null>({ ...LOCAL_USER });
+  const [user] = useState<AppUser | null>({ ...APP_USER });
   const [authLoading] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
 

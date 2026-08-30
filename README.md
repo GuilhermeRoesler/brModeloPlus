@@ -1,6 +1,6 @@
 # BrModeloPlus
 
-> Modelagem de dados moderna — conceitual, lógico e físico — no navegador, com persistência local.
+> Modelagem de dados moderna — conceitual, lógico e físico — no navegador.
 
 **BrModeloPlus** é uma ferramenta web de modelagem de banco de dados, inspirada no clássico brModelo. Permite criar diagramas ER no navegador com persistência em `localStorage`.
 
@@ -22,7 +22,7 @@
   - **Tab** (modo conceitual): com entidade selecionada, cria relacionamento já conectado à direita (edição inline); Tab de novo cria a próxima entidade interligada.
 - **Geração de SQL:** modo físico exibe `CREATE TABLE` completo (mesmo conteúdo da antiga aba SQL).
 - **Import / export JSON:** baixar ou carregar o projeto (conceitual + lógico + físico). No dashboard, importar cria um projeto novo; no editor, importar substitui a sala atual. Arquivos são validados (tamanho máx. 2 MB; schema sanitizado).
-- **Projetos locais:** criar, listar e excluir diagramas (`localStorage`). Dashboard com hero da marca, fundo atmosférico e cards com miniatura ER.
+- **Projetos:** criar, listar e excluir diagramas (`localStorage`). Dashboard com hero da marca, fundo atmosférico e cards com miniatura ER.
 
 ## Tecnologias
 
@@ -53,7 +53,7 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:5173`. O app abre direto no dashboard (modo local). Não é necessário arquivo `.env`.
+Acesse `http://localhost:5173`. O app abre direto no dashboard. Não é necessário arquivo `.env`.
 
 ## Deploy (GitHub Pages)
 
@@ -63,7 +63,7 @@ Push na branch `main` dispara o workflow [`.github/workflows/deploy.yml`](.githu
 
 Site: `https://guilhermeroesler.github.io/brModeloPlus/`
 
-O `base` do Vite (`/brModeloPlus/`) é aplicado só no CI (`GITHUB_ACTIONS`); em `npm run build` local o base continua `/`.
+O `base` do Vite (`/brModeloPlus/`) é aplicado só no CI (`GITHUB_ACTIONS`); fora do CI o base continua `/`.
 
 ## Estrutura do código
 
@@ -78,7 +78,7 @@ src/
     dashboard/            # DashboardScreen
     editor/               # Editor + React Flow canvas, toolbar, painéis
       flow/               # Nós/edges HTML
-  config/                 # Constantes e LOCAL_USER
+  config/                 # Constantes e APP_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
   lib/                    # SQL, localStorage, sanitizeDiagram, autoLayout/ELK, utils (cn)
   services/               # Projetos e salas (localStorage)

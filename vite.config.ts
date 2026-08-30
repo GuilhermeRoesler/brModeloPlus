@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// GitHub Pages serve em /brModeloPlus/ — em dev/local o base continua "/"
+// GitHub Pages serve em /brModeloPlus/ — fora do CI o base continua "/"
 const base =
   process.env.GITHUB_ACTIONS === 'true' ? '/brModeloPlus/' : '/'
 

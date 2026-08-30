@@ -1,7 +1,6 @@
 import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react';
 import { FolderPlus, Trash2, Upload } from 'lucide-react';
 import { SmoothScroll } from '@/components/effects/SmoothScroll';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { readFileAsText } from '@/lib/fileTransfer';
@@ -167,7 +166,7 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
 
   return (
     <div className="dashboard-shell w-full h-screen flex flex-col overflow-hidden">
-      <header className="shrink-0 px-5 sm:px-8 pt-5 pb-2 flex items-center justify-between gap-4">
+      <header className="shrink-0 px-5 sm:px-8 pt-5 pb-2 flex items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <img
             src={`${import.meta.env.BASE_URL}logo.svg`}
@@ -178,9 +177,6 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
             BrModelo<span className="text-indigo-600">Plus</span>
           </span>
         </div>
-        <Badge variant="secondary" className="rounded-lg font-medium text-[11px] text-slate-500">
-          Salvo neste dispositivo
-        </Badge>
       </header>
 
       <main className="flex-1 min-h-0 overflow-hidden">
@@ -196,7 +192,7 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                   <span className="text-indigo-600">Plus</span>
                 </h1>
                 <p className="text-base sm:text-lg text-slate-600 max-w-md leading-relaxed mb-8">
-                  Diagramas ER conceitual, lógico e físico — no navegador, sem conta.
+                  Diagramas ER conceitual, lógico e físico — direto no navegador.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">
