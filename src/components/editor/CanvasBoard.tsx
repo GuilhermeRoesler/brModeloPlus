@@ -204,14 +204,14 @@ export const CanvasBoard = ({
           <Background
             id="grid"
             variant={BackgroundVariant.Dots}
-            gap={20}
-            size={1}
-            color="#94a3b8"
+            gap={22}
+            size={1.25}
+            color="#c7d2fe"
           />
           <FitController fitRequestId={fitRequestId} />
           {isConnectionTool ? (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-              <span className="bg-indigo-600 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow">
+              <span className="editor-chrome text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl">
                 Arraste de um nó até outro para conectar
               </span>
             </div>

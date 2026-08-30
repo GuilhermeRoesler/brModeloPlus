@@ -19,28 +19,28 @@ export const PhysicalSqlView = ({ nodes }: PhysicalSqlViewProps) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-100 text-slate-800">
-      <div className="shrink-0 px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between gap-4 shadow-sm">
+    <div className="flex-1 flex flex-col min-h-0 editor-canvas-bg text-slate-800">
+      <div className="shrink-0 px-5 sm:px-6 py-3.5 border-b border-slate-200/80 bg-white/80 backdrop-blur-sm flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center shrink-0">
             <Code size={18} className="text-indigo-600" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-slate-800 tracking-wide">
+            <h2 className="text-sm font-bold text-slate-800 tracking-tight">
               Modelo físico — SQL DDL
             </h2>
             <p className="text-[11px] text-slate-400 truncate">
-              Gerado automaticamente a partir do modelo lógico (somente leitura)
+              Gerado do modelo lógico · somente leitura
             </p>
           </div>
         </div>
         <button
           type="button"
           onClick={handleCopy}
-          className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
             copied
               ? 'bg-emerald-600 text-white'
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200'
+              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
           }`}
         >
           {copied ? (
@@ -61,7 +61,7 @@ export const PhysicalSqlView = ({ nodes }: PhysicalSqlViewProps) => {
           value={sqlCode}
           spellCheck={false}
           aria-label="SQL DDL gerado"
-          className="w-full h-full resize-none rounded-2xl border border-slate-200 bg-white text-slate-700 font-mono text-sm leading-relaxed p-5 outline-none shadow-sm focus:ring-2 focus:ring-indigo-500/30 caret-transparent selection:bg-indigo-100 selection:text-indigo-900"
+          className="w-full h-full resize-none rounded-2xl border border-slate-200/90 bg-white/95 text-slate-700 font-mono text-sm leading-relaxed p-5 outline-none focus:ring-2 focus:ring-indigo-500/25 caret-transparent selection:bg-indigo-100 selection:text-indigo-900"
         />
       </div>
     </div>

@@ -10,7 +10,7 @@ import {
   type EdgeChange,
   type NodeChange,
 } from '@xyflow/react';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { saveRoom, subscribeToRoom } from '../../services/rooms';
 import { autoLayout } from '../../lib/autoLayout';
 import {
@@ -69,39 +69,52 @@ type EditorScreenProps = {
 };
 
 const ZoomControls = () => {
-  const { zoomIn, zoomOut, setViewport, getViewport } = useReactFlow();
+  const { zoomIn, zoomOut, setViewport, getViewport, fitView } = useReactFlow();
   const zoom = useStore((s) => s.transform[2]);
 
   return (
-    <div className="absolute bottom-6 left-6 flex gap-2 z-10">
-      <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-1 flex items-center gap-1">
+    <div className="absolute bottom-4 left-3 sm:left-4 flex gap-2 z-10">
+      <div className="editor-chrome rounded-xl p-1 flex items-center gap-0.5">
         <button
           type="button"
           onClick={() => void zoomOut({ duration: 150 })}
-          className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+          className="p-2 hover:bg-slate-100/90 rounded-lg text-slate-600 transition-colors"
+          title="Diminuir zoom"
         >
-          <ZoomOut size={18} />
+          <ZoomOut size={17} />
         </button>
-        <span className="text-xs font-bold w-12 text-center text-slate-600 tabular-nums">
+        <span className="text-[11px] font-semibold w-11 text-center text-slate-600 tabular-nums">
           {Math.round(zoom * 100)}%
         </span>
         <button
           type="button"
           onClick={() => void zoomIn({ duration: 150 })}
-          className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+          className="p-2 hover:bg-slate-100/90 rounded-lg text-slate-600 transition-colors"
+          title="Aumentar zoom"
         >
-          <ZoomIn size={18} />
+          <ZoomIn size={17} />
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => {
+          void fitView({ padding: 0.18, duration: 200, maxZoom: 1.15, minZoom: 0.35 });
+        }}
+        className="editor-chrome rounded-xl p-2 text-slate-600 hover:bg-white transition-colors"
+        title="Ajustar à tela"
+      >
+        <Maximize2 size={17} />
+      </button>
       <button
         type="button"
         onClick={() => {
           const vp = getViewport();
           void setViewport({ ...vp, x: 0, y: 0, zoom: 1 }, { duration: 150 });
         }}
-        className="bg-white rounded-xl shadow-lg border border-slate-100 p-2 hover:bg-slate-50 text-slate-600 transition-colors text-xs font-medium"
+        className="editor-chrome rounded-xl px-3 py-2 text-slate-600 hover:bg-white transition-colors text-[11px] font-semibold"
+        title="Zoom 100% e origem"
       >
-        Resetar
+        100%
       </button>
     </div>
   );
@@ -753,14 +766,15 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
   if (!roomReady) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-slate-100 text-slate-500 text-sm">
+      <div className="editor-shell w-full h-screen flex flex-col items-center justify-center gap-3 text-slate-500 text-sm">
+        <span className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
         Carregando diagrama…
       </div>
     );
   }
 
   return (
-    <div className="w-full h-screen flex flex-col bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="editor-shell w-full h-screen flex flex-col overflow-hidden text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
       <EditorHeader
         mode={mode}
         onBack={onBack}
@@ -775,7 +789,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
         <PhysicalSqlView nodes={nodes} />
       ) : (
         <ReactFlowProvider key={mode}>
-          <div className="flex-1 flex relative overflow-hidden">
+          <div className="flex-1 flex relative overflow-hidden editor-canvas-bg">
             <Toolbar
               tool={tool}
               setTool={setTool}

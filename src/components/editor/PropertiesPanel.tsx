@@ -46,25 +46,29 @@ export const PropertiesPanel = ({
   if (selectedIds.length !== 1) {
     if (selectedIds.length > 1) {
       return (
-        <div className="w-80 bg-white border-l border-slate-200 shadow-xl z-20 p-6 flex flex-col justify-center items-center text-center">
-          <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 mb-4">
-            <Users size={24} />
+        <aside className="editor-chrome editor-panel-in w-80 border-l border-slate-200/80 z-20 p-6 flex flex-col justify-center items-center text-center h-full rounded-none border-y-0 border-r-0">
+          <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-4">
+            <Users size={22} />
           </div>
-          <h3 className="text-slate-800 font-bold mb-1">{selectedIds.length} Itens Selecionados</h3>
-          <p className="text-slate-500 text-xs mb-6">Propriedades em massa indisponíveis.</p>
+          <h3 className="text-slate-800 font-bold mb-1">
+            {selectedIds.length} itens selecionados
+          </h3>
+          <p className="text-slate-500 text-xs mb-6 leading-relaxed">
+            Propriedades em massa indisponíveis.
+          </p>
           {!readOnly && (
             <button
               type="button"
               onClick={() => deleteSelected()}
-              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors inline-flex items-center gap-2"
             >
-              <Trash2 size={16} /> Excluir Todos
+              <Trash2 size={16} /> Excluir todos
             </button>
           )}
-        </div>
+        </aside>
       );
     }
-    return <div className="w-0 transition-all duration-300" />;
+    return <div className="w-0 transition-[width] duration-300" />;
   }
 
   const selectedId = selectedIds[0];
@@ -80,38 +84,42 @@ export const PropertiesPanel = ({
   };
 
   return (
-    <div className="w-80 bg-white border-l border-slate-200 shadow-xl transition-all duration-300 z-20 overflow-y-auto flex flex-col h-full">
-      <div className="p-6 flex-1">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Propriedades</h2>
+    <aside className="editor-chrome editor-panel-in w-80 border-l border-slate-200/80 transition-[width] duration-300 z-20 overflow-y-auto flex flex-col h-full rounded-none border-y-0 border-r-0">
+      <div className="p-5 sm:p-6 flex-1">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.14em]">
+            Propriedades
+          </h2>
           <button
             type="button"
             onClick={() => deleteSelected(null)}
-            className="text-slate-400 hover:text-slate-600"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
             title="Fechar seleção"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {readOnly && (
-          <p className="mb-4 text-[11px] leading-relaxed text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+          <p className="mb-4 text-[11px] leading-relaxed text-amber-800 bg-amber-50/90 border border-amber-100 rounded-xl px-3 py-2">
             Visão derivada do conceitual — edite no modo conceitual para atualizar.
           </p>
         )}
 
         {selectedNode && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-                {selectedNode.type === NODE_TYPES.ENTITY && <Square size={24} />}
-                {selectedNode.type === NODE_TYPES.RELATIONSHIP && <Diamond size={24} />}
-                {selectedNode.type === NODE_TYPES.ATTRIBUTE && <Circle size={24} />}
-                {selectedNode.type === NODE_TYPES.TABLE && <TableIcon size={24} />}
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 shrink-0">
+                {selectedNode.type === NODE_TYPES.ENTITY && <Square size={22} />}
+                {selectedNode.type === NODE_TYPES.RELATIONSHIP && <Diamond size={22} />}
+                {selectedNode.type === NODE_TYPES.ATTRIBUTE && <Circle size={22} />}
+                {selectedNode.type === NODE_TYPES.TABLE && <TableIcon size={22} />}
               </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium capitalize">{selectedNode.type}</p>
-                <p className="font-bold text-slate-800 text-lg truncate max-w-[150px]">
+              <div className="min-w-0">
+                <p className="text-[11px] text-slate-500 font-medium capitalize">
+                  {selectedNode.type}
+                </p>
+                <p className="font-bold text-slate-800 text-base truncate">
                   {selectedNode.data.label}
                 </p>
               </div>
@@ -125,8 +133,8 @@ export const PropertiesPanel = ({
             />
 
             {selectedNode.type === NODE_TYPES.ENTITY && (
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-sm font-medium text-slate-700">Entidade Fraca?</span>
+              <div className="flex items-center justify-between p-3 bg-slate-50/90 rounded-xl border border-slate-100">
+                <span className="text-sm font-medium text-slate-700">Entidade fraca?</span>
                 <input
                   type="checkbox"
                   disabled={readOnly}
@@ -154,7 +162,7 @@ export const PropertiesPanel = ({
             )}
 
             {selectedNode.type === NODE_TYPES.TABLE && (
-              <div className="mt-4">
+              <div className="mt-2">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Colunas
@@ -168,7 +176,7 @@ export const PropertiesPanel = ({
                           { id: generateId(), name: 'nova', type: 'INT', isPk: false },
                         ])
                       }
-                      className="text-indigo-600 hover:bg-indigo-50 p-1 rounded"
+                      className="text-indigo-600 hover:bg-indigo-50 p-1 rounded-lg"
                     >
                       <Plus size={16} />
                     </button>
@@ -178,7 +186,7 @@ export const PropertiesPanel = ({
                   {selectedNode.data.columns?.map((col) => (
                     <div
                       key={col.id}
-                      className="p-2 bg-slate-50 rounded-lg border border-slate-200 flex flex-col gap-2"
+                      className="p-2 bg-slate-50/90 rounded-lg border border-slate-200/80 flex flex-col gap-2"
                     >
                       <div className="flex gap-2">
                         <input
@@ -191,7 +199,7 @@ export const PropertiesPanel = ({
                               ),
                             )
                           }
-                          className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs disabled:opacity-60"
+                          className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs disabled:opacity-60"
                         />
                         {!readOnly && (
                           <button
@@ -218,7 +226,7 @@ export const PropertiesPanel = ({
                               ),
                             )
                           }
-                          className="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-500 disabled:opacity-60"
+                          className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-500 disabled:opacity-60"
                         />
                         <label className="flex items-center gap-1">
                           <input
@@ -260,14 +268,14 @@ export const PropertiesPanel = ({
         )}
 
         {selectedEdge && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-                <Minus size={24} className="rotate-45" />
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
+                <Minus size={22} className="rotate-45" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 font-medium">Conexão</p>
-                <p className="font-bold text-slate-800 text-lg">Ligação</p>
+                <p className="text-[11px] text-slate-500 font-medium">Conexão</p>
+                <p className="font-bold text-slate-800 text-base">Ligação</p>
               </div>
             </div>
             {(() => {
@@ -322,8 +330,7 @@ export const PropertiesPanel = ({
             })()}
             {!readOnly && (
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Dica: no canvas, clique no chip <span className="font-semibold">?</span> da
-                aresta para alternar 1, N, (0,1), (1,1), (0,n), (1,n).
+                Dica: no canvas, clique no chip da aresta para alternar 1, N, (0,1)…
               </p>
             )}
           </div>
@@ -331,16 +338,16 @@ export const PropertiesPanel = ({
       </div>
 
       {!readOnly && (
-        <div className="p-6 border-t border-slate-100 bg-slate-50">
+        <div className="p-5 border-t border-slate-100/90 bg-slate-50/50">
           <button
             type="button"
             onClick={() => deleteSelected()}
-            className="w-full py-3 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm shadow-sm"
+            className="w-full py-2.5 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 rounded-xl transition-colors font-medium text-sm"
           >
-            <Trash2 size={18} /> Excluir Selecionado
+            <Trash2 size={16} /> Excluir selecionado
           </button>
         </div>
       )}
-    </div>
+    </aside>
   );
 };

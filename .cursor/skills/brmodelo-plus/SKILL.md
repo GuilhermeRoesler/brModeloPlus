@@ -165,6 +165,7 @@ Posição da cadeia Tab: `positionRightOf`.
 - Favicon em `index.html`; mesma marca no header do dashboard e do editor (`import.meta.env.BASE_URL + 'logo.svg'`).
 - Tipografia global: **Sora** (Google Fonts).
 - **Dashboard** (`DashboardScreen`): hero com marca BrModeloPlus + CTAs; fundo atmosférico (gradientes + padrão ER); cards de projeto com miniatura ER decorativa; animações leves (`dash-animate-in` / `dash-stagger` em `index.css`).
+- **Editor:** chrome compartilhado (`.editor-shell` / `.editor-chrome` / `.editor-canvas-bg`): header com modos Conceitual·Lógico·Físico, toolbar/zoom/painel em vidro leve, canvas com dots indigo, botão “ajustar à tela”, visão SQL alinhada.
 
 ## Deploy
 
