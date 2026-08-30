@@ -22,7 +22,8 @@
   - **Tab** (modo conceitual): com entidade selecionada, cria relacionamento já conectado à direita (edição inline); Tab de novo cria a próxima entidade interligada.
 - **Geração de SQL:** modo físico exibe `CREATE TABLE` completo (mesmo conteúdo da antiga aba SQL).
 - **Import / export JSON:** baixar ou carregar o projeto (conceitual + lógico + físico). No dashboard, importar cria um projeto novo; no editor, importar substitui a sala atual. Arquivos são validados (tamanho máx. 2 MB; schema sanitizado).
-- **Projetos:** criar, listar e excluir diagramas (`localStorage`). Dashboard com hero da marca, fundo atmosférico e cards com miniatura ER.
+- **Projetos:** criar, listar e excluir diagramas (`localStorage`). Dashboard com hero da marca (entrada escalonada), fundo atmosférico animado e cards com miniatura ER e hover.
+- **Motion / feedback:** Lenis no dashboard; cursor customizado; troca de modo e painel de propriedades animados no editor; flash discreto ao criar nó ou aplicar auto layout. Respeita `prefers-reduced-motion`.
 
 ## Tecnologias
 

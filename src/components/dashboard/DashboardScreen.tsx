@@ -182,20 +182,20 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
       <main className="flex-1 min-h-0 overflow-hidden">
         <SmoothScroll className="h-full px-5 sm:px-8 pb-10">
           <div className="max-w-5xl mx-auto">
-            <section className="dash-animate-in relative grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-center py-6 sm:py-10">
+            <section className="relative grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-center py-6 sm:py-10">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-600 mb-3">
+                <p className="dash-hero-step dash-hero-step--brand text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-600 mb-3">
                   Modelagem de dados
                 </p>
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.05] mb-4">
+                <h1 className="dash-hero-step dash-hero-step--title text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.05] mb-4">
                   BrModelo
                   <span className="text-indigo-600">Plus</span>
                 </h1>
-                <p className="text-base sm:text-lg text-slate-600 max-w-md leading-relaxed mb-8">
+                <p className="dash-hero-step dash-hero-step--lead text-base sm:text-lg text-slate-600 max-w-md leading-relaxed mb-8">
                   Diagramas ER conceitual, lógico e físico — direto no navegador.
                 </p>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="dash-hero-step dash-hero-step--cta flex flex-wrap items-center gap-3">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -228,7 +228,7 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                 </div>
               </div>
 
-              <div className="hidden sm:block relative h-44 lg:h-56">
+              <div className="dash-hero-step dash-hero-step--visual hidden sm:block relative h-44 lg:h-56">
                 <div className="absolute inset-0 rounded-3xl bg-white/50 border border-white/80 backdrop-blur-[2px]" />
                 <div className="relative h-full p-4 lg:p-6">
                   <HeroDiagram />
@@ -327,10 +327,12 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                             onOpenProject(project.roomId);
                           }
                         }}
-                        className="group w-full text-left rounded-2xl overflow-hidden bg-white/85 border border-slate-200/90 hover:border-indigo-300 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 cursor-pointer"
+                        className="dash-project-card group w-full text-left rounded-2xl overflow-hidden bg-white/85 border border-slate-200/90 focus-visible:outline-none cursor-pointer"
                       >
                         <div className="h-28 border-b border-slate-100 overflow-hidden pointer-events-none">
-                          <ProjectThumb variant={index} />
+                          <div className="dash-project-thumb h-full origin-center">
+                            <ProjectThumb variant={index} />
+                          </div>
                         </div>
                         <div className="p-4 flex items-start justify-between gap-2">
                           <div className="min-w-0">

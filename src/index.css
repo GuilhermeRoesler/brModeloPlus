@@ -200,6 +200,8 @@
     radial-gradient(ellipse 70% 50% at 96% 8%, rgba(14, 165, 233, 0.12), transparent 50%),
     radial-gradient(ellipse 50% 40% at 70% 100%, rgba(79, 70, 229, 0.08), transparent 55%),
     linear-gradient(180deg, #f8fafc 0%, #eef2ff 48%, #f1f5f9 100%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  animation: dash-glow-drift 22s ease-in-out infinite;
 }
 
 .dashboard-shell::before {
@@ -212,6 +214,37 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%234f46e5' stroke-opacity='0.09' stroke-width='1.5'%3E%3Crect x='18' y='28' width='44' height='28' rx='3'/%3E%3Cpath d='M86 26 L108 42 L86 58 L64 42 Z'/%3E%3Cline x1='62' y1='42' x2='64' y2='42'/%3E%3Cline x1='40' y1='56' x2='40' y2='72'/%3E%3Ccircle cx='40' cy='80' r='6'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 160px 160px;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 85%);
+  animation: dash-pattern-drift 20s ease-in-out infinite;
+}
+
+@keyframes dash-glow-drift {
+  0%,
+  100% {
+    background-position:
+      0% 0%,
+      100% 0%,
+      70% 100%,
+      0 0;
+  }
+  50% {
+    background-position:
+      4% 3%,
+      96% 2%,
+      68% 98%,
+      0 0;
+  }
+}
+
+@keyframes dash-pattern-drift {
+  0%,
+  100% {
+    background-position: 0 0;
+    opacity: 0.4;
+  }
+  50% {
+    background-position: 28px 18px;
+    opacity: 0.55;
+  }
 }
 
 @keyframes dash-fade-up {
@@ -237,6 +270,26 @@
 
 .dash-animate-in {
   animation: dash-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hero: marca → título → lead → CTA → diagrama */
+.dash-hero-step {
+  animation: dash-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.dash-hero-step--brand {
+  animation-delay: 0.02s;
+}
+.dash-hero-step--title {
+  animation-delay: 0.12s;
+}
+.dash-hero-step--lead {
+  animation-delay: 0.22s;
+}
+.dash-hero-step--cta {
+  animation-delay: 0.34s;
+}
+.dash-hero-step--visual {
+  animation-delay: 0.28s;
 }
 
 .dash-stagger > * {
@@ -279,6 +332,35 @@
   animation: dash-pulse-soft 3.2s 1s ease-in-out infinite;
 }
 
+.dash-project-card {
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    background-color 0.25s ease;
+}
+.dash-project-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in oklab, var(--dash-accent) 45%, #cbd5e1);
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 14px 32px -10px rgba(79, 70, 229, 0.22),
+    0 6px 14px -6px rgba(15, 23, 42, 0.1);
+}
+.dash-project-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 24px -8px rgba(79, 70, 229, 0.2),
+    0 0 0 2px rgba(79, 70, 229, 0.35);
+}
+.dash-project-thumb {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dash-project-card:hover .dash-project-thumb,
+.dash-project-card:focus-visible .dash-project-thumb {
+  transform: scale(1.045);
+}
+
 /* —— Editor chrome —— */
 .editor-shell {
   font-family: var(--font-sans);
@@ -309,17 +391,118 @@
   }
 }
 
+@keyframes editor-mode-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes editor-panel-slide {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes editor-canvas-flash {
+  0% {
+    opacity: 0.28;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.editor-mode-in {
+  animation: editor-mode-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.editor-panel-shell {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-left-width: 0;
+  transition:
+    width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    border-left-width 0.3s ease;
+}
+.editor-panel-shell--open {
+  width: 20rem;
+  opacity: 1;
+  pointer-events: auto;
+  border-left-width: 1px;
+}
+.editor-panel-shell--open .editor-panel-body {
+  animation: editor-panel-slide 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .editor-panel-in {
   animation: editor-fade-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.editor-mode-tab {
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.editor-mode-tab[aria-selected="true"] {
+  transform: translateY(-0.5px);
+}
+
+.editor-canvas-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 45%,
+    rgba(99, 102, 241, 0.35),
+    transparent 70%
+  );
+  animation: editor-canvas-flash 0.55s ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .dashboard-shell,
+  .dashboard-shell::before {
+    animation: none !important;
+  }
+
   .dash-animate-in,
   .dash-stagger > *,
+  .dash-hero-step,
   .dash-hero-mark,
   .dash-hero-mark .dash-key,
-  .editor-panel-in {
+  .editor-panel-in,
+  .editor-mode-in,
+  .editor-panel-shell--open .editor-panel-body,
+  .editor-canvas-flash {
     animation: none !important;
+  }
+
+  .dash-project-card,
+  .dash-project-thumb,
+  .editor-mode-tab,
+  .editor-panel-shell {
+    transition: none !important;
+  }
+
+  .dash-project-card:hover,
+  .dash-project-card:focus-visible {
+    transform: none;
   }
 
   .has-custom-cursor,

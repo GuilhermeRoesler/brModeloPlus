@@ -152,6 +152,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const [fitRequestId, setFitRequestId] = useState(0);
   const [roomReady, setRoomReady] = useState(false);
   const [showMinimap, setShowMinimap] = useState(false);
+  const [canvasFlashKey, setCanvasFlashKey] = useState(0);
 
   const projectName = useMemo(
     () => findProjectByRoomId(roomId)?.name?.trim() || 'Projeto',
@@ -294,6 +295,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   };
 
   const requestFit = () => setFitRequestId((n) => n + 1);
+  const triggerCanvasFlash = () => setCanvasFlashKey((n) => n + 1);
   const isLogicalReadOnly = mode === MODES.LOGICAL;
 
   const commitDiagram = async (
@@ -420,6 +422,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     const cleared = nodesRef.current.map((n) => ({ ...n, selected: false }));
     const clearedEdges = edgesRef.current.map((e) => ({ ...e, selected: false }));
     void commitDiagram([...cleared, newNode], clearedEdges);
+    triggerCanvasFlash();
     setTool('select');
   };
 
@@ -792,7 +795,9 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
 
   const handleAutoLayout = () => {
     if (modeRef.current !== MODES.CONCEPTUAL) return;
-    void commitDiagram(nodesRef.current, edgesRef.current);
+    void commitDiagram(nodesRef.current, edgesRef.current).then(() => {
+      triggerCanvasFlash();
+    });
   };
 
   if (!roomReady) {
@@ -818,10 +823,12 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
       />
 
       {mode === MODES.PHYSICAL ? (
-        <PhysicalSqlView nodes={nodes} />
+        <div key="physical" className="editor-mode-in flex-1 flex flex-col min-h-0">
+          <PhysicalSqlView nodes={nodes} />
+        </div>
       ) : (
         <ReactFlowProvider key={mode}>
-          <div className="flex-1 flex relative overflow-hidden editor-canvas-bg">
+          <div className="editor-mode-in flex-1 flex relative overflow-hidden editor-canvas-bg">
             <Toolbar
               tool={tool}
               setTool={setTool}
@@ -864,6 +871,14 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
               deleteSelected={deleteSelected}
               readOnly={isLogicalReadOnly}
             />
+
+            {canvasFlashKey > 0 && (
+              <div
+                key={canvasFlashKey}
+                className="editor-canvas-flash"
+                aria-hidden
+              />
+            )}
           </div>
         </ReactFlowProvider>
       )}

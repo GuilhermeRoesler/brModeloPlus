@@ -78,7 +78,7 @@ export const EditorHeader = ({
               role="tab"
               aria-selected={mode === m}
               onClick={() => onChangeMode(m)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors ${
+              className={`editor-mode-tab px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold ${
                 mode === m
                   ? 'bg-white text-indigo-600 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
