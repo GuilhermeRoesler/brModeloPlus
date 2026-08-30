@@ -6,6 +6,8 @@ import {
   type EdgeProps,
 } from '@xyflow/react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   CARDINALITY_OFFSET_PX,
   cardinalityFieldForSide,
@@ -83,11 +85,14 @@ const LabelChip = ({
         zIndex: 1,
       }}
     >
-      <button
+      <Button
         type="button"
+        variant={empty ? 'outline' : selected ? 'secondary' : 'outline'}
+        size="xs"
         onClick={handleClick}
         onMouseDown={(e) => e.stopPropagation()}
         title="Clique para alternar a cardinalidade"
+        aria-label="Alternar cardinalidade"
         style={{
           position: 'absolute',
           left: 0,
@@ -95,18 +100,20 @@ const LabelChip = ({
           transform: 'translate(-50%, -50%)',
           pointerEvents: 'all',
         }}
-        className={`min-w-[1.75rem] px-1.5 py-0.5 rounded text-[10px] font-bold leading-none border whitespace-nowrap transition-colors ${
-          empty
-            ? selected
-              ? 'border-indigo-300 bg-indigo-50 text-indigo-400 hover:bg-indigo-100'
-              : 'border-slate-200 bg-white/90 text-slate-300 hover:border-slate-300 hover:text-slate-500'
-            : selected
-              ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-              : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-indigo-300'
-        }`}
+        className={cn(
+          'min-w-[1.75rem] h-5 px-1.5 rounded-md text-[10px] font-bold leading-none shadow-xs',
+          empty &&
+            (selected
+              ? 'border-primary/40 bg-accent text-primary/70 hover:bg-accent'
+              : 'text-muted-foreground/50 hover:text-muted-foreground'),
+          !empty &&
+            (selected
+              ? 'border-primary/40 bg-accent text-primary'
+              : 'bg-card text-foreground hover:border-primary/40'),
+        )}
       >
         {empty ? '?' : value}
-      </button>
+      </Button>
     </div>
   );
 };
@@ -222,7 +229,9 @@ export const CardinalityEdge = ({
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: selected ? '#6366f1' : (style?.stroke as string) || '#334155',
+          stroke: selected
+            ? 'var(--primary)'
+            : (style?.stroke as string) || 'color-mix(in oklab, var(--foreground) 55%, transparent)',
           strokeWidth: selected ? 2.5 : 1.5,
         }}
       />

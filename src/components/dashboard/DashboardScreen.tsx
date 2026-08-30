@@ -3,6 +3,21 @@ import { FolderPlus, Trash2, Upload } from 'lucide-react';
 import { SmoothScroll } from '@/components/effects/SmoothScroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { readFileAsText } from '@/lib/fileTransfer';
 import { parseProjectFileJson, ProjectFileError } from '@/lib/projectFile';
@@ -237,24 +252,39 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
               </div>
             </section>
 
-            {isCreating && (
-              <form
-                onSubmit={(e) => void handleCreate(e)}
-                className="dash-animate-in mb-8 p-5 sm:p-6 rounded-2xl bg-white/90 border border-indigo-100/80 backdrop-blur-sm"
-              >
-                <label className="block text-xs font-semibold text-slate-500 tracking-wide mb-2">
-                  Nome do projeto
-                </label>
-                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                  <Input
-                    autoFocus
-                    type="text"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    placeholder="Ex.: Biblioteca universitária"
-                    className="flex-1 h-11 rounded-xl bg-slate-50"
-                  />
-                  <div className="flex gap-2 shrink-0">
+            <Dialog
+              open={isCreating}
+              onOpenChange={(open) => {
+                setIsCreating(open);
+                if (!open) setNewProjectName('');
+              }}
+            >
+              <DialogContent className="sm:max-w-md rounded-2xl">
+                <form onSubmit={(e) => void handleCreate(e)}>
+                  <DialogHeader>
+                    <DialogTitle>Novo projeto</DialogTitle>
+                    <DialogDescription>
+                      Defina um nome para o diagrama. Você pode alterar depois no editor.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <label
+                      htmlFor="project-name"
+                      className="block text-xs font-semibold text-muted-foreground tracking-wide mb-2"
+                    >
+                      Nome do projeto
+                    </label>
+                    <Input
+                      id="project-name"
+                      autoFocus
+                      type="text"
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      placeholder="Ex.: Biblioteca universitária"
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+                  <DialogFooter className="gap-2 sm:gap-2">
                     <Button
                       type="button"
                       variant="ghost"
@@ -266,14 +296,14 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                     <Button type="submit" className="rounded-xl px-6">
                       Criar
                     </Button>
-                  </div>
-                </div>
-              </form>
-            )}
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
 
             <section className="dash-animate-in" style={{ animationDelay: '0.12s' }}>
               <div className="flex items-baseline justify-between gap-3 mb-5">
-                <h2 className="text-lg font-bold tracking-tight text-slate-800">
+                <h2 className="text-lg font-bold tracking-tight text-foreground">
                   Seus projetos
                 </h2>
                 {!loading && projects.length > 0 && (
@@ -285,40 +315,42 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
 
               {loading ? (
                 <div className="flex justify-center py-24">
-                  <span className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                  <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 </div>
               ) : projects.length === 0 ? (
-                <div className="relative overflow-hidden rounded-3xl border border-dashed border-indigo-200/80 bg-white/60 px-6 py-16 text-center">
-                  <div
-                    className="pointer-events-none absolute inset-0 opacity-40"
-                    aria-hidden
-                  >
-                    <div className="absolute left-1/2 top-6 -translate-x-1/2 w-64 h-36">
-                      <HeroDiagram />
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <h3 className="text-lg font-bold text-slate-800 mb-2">
-                      Comece pelo primeiro diagrama
-                    </h3>
-                    <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6 leading-relaxed">
-                      Crie um projeto em branco ou importe um JSON exportado do BrModeloPlus.
-                    </p>
-                    <Button
-                      type="button"
-                      onClick={openCreate}
-                      className="rounded-xl gap-2"
+                <Card className="relative overflow-hidden rounded-3xl border-dashed border-primary/25 bg-card/70 py-0 shadow-none">
+                  <CardContent className="relative px-6 py-16 text-center">
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-40"
+                      aria-hidden
                     >
-                      <FolderPlus size={16} />
-                      Criar projeto
-                    </Button>
-                  </div>
-                </div>
+                      <div className="absolute left-1/2 top-6 -translate-x-1/2 w-64 h-36">
+                        <HeroDiagram />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <CardTitle className="text-lg font-bold mb-2">
+                        Comece pelo primeiro diagrama
+                      </CardTitle>
+                      <CardDescription className="text-sm max-w-sm mx-auto mb-6 leading-relaxed">
+                        Crie um projeto em branco ou importe um JSON exportado do BrModeloPlus.
+                      </CardDescription>
+                      <Button
+                        type="button"
+                        onClick={openCreate}
+                        className="rounded-xl gap-2"
+                      >
+                        <FolderPlus size={16} />
+                        Criar projeto
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
                 <ul className="dash-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none p-0 m-0">
                   {projects.map((project, index) => (
                     <li key={project.id}>
-                      <div
+                      <Card
                         role="button"
                         tabIndex={0}
                         onClick={() => onOpenProject(project.roomId)}
@@ -328,21 +360,21 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                             onOpenProject(project.roomId);
                           }
                         }}
-                        className="dash-project-card group w-full text-left rounded-2xl overflow-hidden bg-white/85 border border-slate-200/90 focus-visible:outline-none cursor-pointer"
+                        className="dash-project-card group w-full gap-0 py-0 overflow-hidden rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                       >
-                        <div className="h-28 border-b border-slate-100 overflow-hidden pointer-events-none">
+                        <div className="h-28 border-b border-border overflow-hidden pointer-events-none">
                           <div className="dash-project-thumb h-full origin-center">
                             <ProjectThumb variant={index} />
                           </div>
                         </div>
-                        <div className="p-4 flex items-start justify-between gap-2">
+                        <CardHeader className="p-4 flex flex-row items-start justify-between gap-2 space-y-0">
                           <div className="min-w-0">
-                            <h3 className="font-semibold text-slate-800 text-[15px] truncate group-hover:text-indigo-700 transition-colors">
+                            <CardTitle className="font-semibold text-[15px] truncate group-hover:text-primary transition-colors">
                               {project.name}
-                            </h3>
-                            <p className="text-xs text-slate-400 mt-1">
+                            </CardTitle>
+                            <CardDescription className="text-xs mt-1">
                               {formatProjectDate(project.createdAt)}
-                            </p>
+                            </CardDescription>
                           </div>
                           <Button
                             type="button"
@@ -351,12 +383,12 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                             title="Excluir projeto"
                             aria-label={`Excluir ${project.name}`}
                             onClick={(e) => void handleDelete(e, project.id)}
-                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 rounded-lg"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 rounded-lg shrink-0"
                           >
                             <Trash2 size={15} />
                           </Button>
-                        </div>
-                      </div>
+                        </CardHeader>
+                      </Card>
                     </li>
                   ))}
                 </ul>

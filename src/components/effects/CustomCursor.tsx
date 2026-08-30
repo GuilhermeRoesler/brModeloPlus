@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 
 const HOVER_SELECTOR =
-  'a, button, [role="button"], [role="tab"], label, summary, .cursor-pointer';
+  'a, button, [role="button"], [role="tab"], [data-slot="button"], [data-slot="toggle-group-item"], [data-slot="tabs-trigger"], label, summary, .cursor-pointer';
 const NATIVE_SELECTOR =
-  '.react-flow, #diagram-canvas, [data-native-cursor], input, textarea, select';
+  '.react-flow, #diagram-canvas, [data-native-cursor], input, textarea, select, [data-slot="select-content"], [data-slot="dialog-content"]';
 
 /**
- * Cursor customizado indigo — desativado em touch, reduced-motion e no canvas do editor.
+ * Cursor customizado (tokens --primary) — desativado em touch, reduced-motion e no canvas.
+ * Lenis permanece como lib; este efeito só cobre o ponteiro fora do diagrama.
  */
 export const CustomCursor = () => {
   const [enabled, setEnabled] = useState(false);

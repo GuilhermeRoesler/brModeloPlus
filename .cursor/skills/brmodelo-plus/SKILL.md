@@ -164,10 +164,10 @@ Posição da cadeia Tab: `positionRightOf`.
 - Logo em `public/logo.svg` (+ `public/logo.png` para fallback de favicon): tile indigo com marca ER (entidade → relacionamento, atributo-chave Heuser, “+” do Plus).
 - Favicon em `index.html`; mesma marca no header do dashboard e do editor (`import.meta.env.BASE_URL + 'logo.svg'`).
 - Tipografia global: **Sora** (Google Fonts).
-- **UI kit:** shadcn/ui em `src/components/ui` — `Button`, `Input`, `Select`, `Badge`, `Separator`, `Card` (+ `PropertyInput` composto com Input/Select). Controles do dashboard e do editor compartilham as mesmas variantes/tokens CSS (`--primary`, etc.).
-- **Dashboard** (`DashboardScreen`): hero com marca BrModeloPlus + CTAs em entrada escalonada (marca → título → lead → CTA); fundo atmosférico (gradientes + padrão ER com drift leve); cards de projeto com hover (sombra/borda/miniatura); animações (`dash-animate-in` / `dash-stagger` / `dash-hero-step` em `index.css`); scroll suave **Lenis** no main.
-- **Editor:** chrome compartilhado (`.editor-shell` / `.editor-chrome` / `.editor-canvas-bg`): header/toolbar/zoom/painel via **Button** (+ **Separator**); modos Conceitual·Lógico·Físico (transição `editor-mode-in`); painel de propriedades com abrir/fechar animado (`.editor-panel-shell`) e **Select** shadcn para tipo de atributo / cardinalidade; flash discreto no canvas ao criar nó ou aplicar auto layout (`.editor-canvas-flash`); canvas React Flow; visão SQL com Badge + Button.
-- **Efeitos globais:** `CustomCursor` (indigo; desligado em touch / reduced-motion / canvas React Flow); alias `@/` + `cn` em `lib/utils.ts`.
+- **UI kit:** shadcn/ui em `src/components/ui` — `Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`, `Tabs`, `ToggleGroup`, `Tooltip`, `Dialog` (+ `PropertyInput` composto). `TooltipProvider` no `App`. Controles compartilham tokens CSS (`--primary`, etc.).
+- **Dashboard** (`DashboardScreen`): hero + CTAs; **Dialog** para criar projeto; **Card** nos projetos/empty state; fundo atmosférico + Lenis.
+- **Editor:** modos via **Tabs**; ferramentas via **ToggleGroup** + **Tooltip**; zoom com Tooltip; chip de cardinalidade = **Button** xs; nós/edges alinhados a tokens (`bg-card`, `border-primary`, Badge PK/FK); painel com Select; visão SQL com Badge + Button.
+- **Efeitos:** `CustomCursor` (tokens primary; desligado em touch / reduced-motion / canvas / dialogs); Lenis em `SmoothScroll`; alias `@/` + `cn`.
 
 ## Deploy
 

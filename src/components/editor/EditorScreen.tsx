@@ -12,6 +12,11 @@ import {
 } from '@xyflow/react';
 import { Map, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { saveRoom, subscribeToRoom } from '../../services/rooms';
 import { autoLayout } from '../../lib/autoLayout';
 import {
@@ -81,68 +86,95 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
   return (
     <div className="absolute bottom-4 left-3 sm:left-4 flex gap-2 z-10">
       <div className="editor-chrome rounded-xl p-1 flex items-center gap-0.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => void zoomOut({ duration: 150 })}
-          className="rounded-lg text-muted-foreground"
-          title="Diminuir zoom"
-        >
-          <ZoomOut />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => void zoomOut({ duration: 150 })}
+              className="rounded-lg text-muted-foreground"
+              aria-label="Diminuir zoom"
+            >
+              <ZoomOut />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Diminuir zoom</TooltipContent>
+        </Tooltip>
         <span className="text-[11px] font-semibold w-11 text-center text-muted-foreground tabular-nums">
           {Math.round(zoom * 100)}%
         </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => void zoomIn({ duration: 150 })}
-          className="rounded-lg text-muted-foreground"
-          title="Aumentar zoom"
-        >
-          <ZoomIn />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => void zoomIn({ duration: 150 })}
+              className="rounded-lg text-muted-foreground"
+              aria-label="Aumentar zoom"
+            >
+              <ZoomIn />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Aumentar zoom</TooltipContent>
+        </Tooltip>
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        onClick={() => {
-          void fitView({ padding: 0.18, duration: 200, maxZoom: 1.15, minZoom: 0.35 });
-        }}
-        className="editor-chrome size-9 rounded-xl text-muted-foreground hover:bg-background"
-        title="Ajustar à tela"
-      >
-        <Maximize2 />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          const vp = getViewport();
-          void setViewport({ ...vp, x: 0, y: 0, zoom: 1 }, { duration: 150 });
-        }}
-        className="editor-chrome h-9 rounded-xl px-3 text-[11px] font-semibold text-muted-foreground hover:bg-background"
-        title="Zoom 100% e origem"
-      >
-        100%
-      </Button>
-      <Button
-        type="button"
-        variant={showMinimap ? 'secondary' : 'ghost'}
-        size="icon-sm"
-        onClick={onToggleMinimap}
-        aria-pressed={showMinimap}
-        className={`editor-chrome size-9 rounded-xl ${
-          showMinimap ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-background'
-        }`}
-        title={showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa'}
-      >
-        <Map />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              void fitView({ padding: 0.18, duration: 200, maxZoom: 1.15, minZoom: 0.35 });
+            }}
+            className="editor-chrome size-9 rounded-xl text-muted-foreground hover:bg-background"
+            aria-label="Ajustar à tela"
+          >
+            <Maximize2 />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Ajustar à tela</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const vp = getViewport();
+              void setViewport({ ...vp, x: 0, y: 0, zoom: 1 }, { duration: 150 });
+            }}
+            className="editor-chrome h-9 rounded-xl px-3 text-[11px] font-semibold text-muted-foreground hover:bg-background"
+            aria-label="Zoom 100%"
+          >
+            100%
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Zoom 100% e origem</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant={showMinimap ? 'secondary' : 'ghost'}
+            size="icon-sm"
+            onClick={onToggleMinimap}
+            aria-pressed={showMinimap}
+            className={`editor-chrome size-9 rounded-xl ${
+              showMinimap ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-background'
+            }`}
+            aria-label={showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa'}
+          >
+            <Map />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa'}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 };

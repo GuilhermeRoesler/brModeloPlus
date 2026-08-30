@@ -23,8 +23,8 @@
 - **Geração de SQL:** modo físico exibe `CREATE TABLE` completo (mesmo conteúdo da antiga aba SQL).
 - **Import / export JSON:** baixar ou carregar o projeto (conceitual + lógico + físico). No dashboard, importar cria um projeto novo; no editor, importar substitui a sala atual. Arquivos são validados (tamanho máx. 2 MB; schema sanitizado).
 - **Projetos:** criar, listar e excluir diagramas (`localStorage`). Dashboard com hero da marca (entrada escalonada), fundo atmosférico animado e cards com miniatura ER e hover.
-- **Motion / feedback:** Lenis no dashboard; cursor customizado; hover de botões shadcn com lift/sombra; troca de modo e painel de propriedades animados no editor; flash discreto ao criar nó ou aplicar auto layout. Respeita `prefers-reduced-motion`.
-- **UI:** shadcn/ui (`Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`) compartilhado entre dashboard e editor; painel de propriedades usa Select para tipo de atributo e cardinalidade.
+- **UI:** shadcn/ui (`Button`, `Input`, `Select`, `Badge`, `Separator`, `Card`, `Tabs`, `ToggleGroup`, `Tooltip`, `Dialog`) no dashboard e no editor; nós do canvas usam os mesmos tokens; chip de cardinalidade é Button.
+- **Motion / feedback:** Lenis no dashboard; cursor customizado (tokens); hover shadcn; Tabs de modo e painel animados; flash ao criar nó / auto layout. Respeita `prefers-reduced-motion`.
 
 ## Tecnologias
 
@@ -75,11 +75,11 @@ public/
 src/
   App.tsx                 # Roteador (dashboard → editor) + CustomCursor
   components/
+    ui/                   # shadcn (button, input, select, card, badge, separator, tabs, toggle-group, tooltip, dialog) + PropertyInput
     effects/              # Lenis (SmoothScroll), CustomCursor
-    ui/                   # shadcn (button, input, select, card, badge, separator) + PropertyInput
     dashboard/            # DashboardScreen
     editor/               # Editor + React Flow canvas, toolbar, painéis
-      flow/               # Nós/edges HTML
+      flow/               # Nós/edges (tokens shadcn + Heuser)
   config/                 # Constantes e APP_USER
   types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
   lib/                    # SQL, localStorage, sanitizeDiagram, autoLayout/ELK, utils (cn)

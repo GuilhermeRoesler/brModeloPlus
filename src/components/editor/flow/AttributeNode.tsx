@@ -1,4 +1,5 @@
 import type { NodeProps } from '@xyflow/react';
+import { cn } from '@/lib/utils';
 import type { ErNodeData } from '../../../types';
 import { useDiagramFlow } from './DiagramFlowContext';
 import { NodeHandles } from './NodeHandles';
@@ -26,31 +27,36 @@ export const AttributeNode = ({
   const labelWidth = Math.max(48, displayLabel.length * 7 + 8);
   const editWidth = Math.max(96, labelWidth + 24);
 
-  const circleBorder = selected ? 'border-indigo-500' : 'border-slate-800';
+  const circleBorder = selected ? 'border-primary' : 'border-foreground/80';
   const circleFill = isKey
     ? selected
-      ? 'bg-indigo-500'
-      : 'bg-slate-800'
+      ? 'bg-primary'
+      : 'bg-foreground/80'
     : selected
-      ? 'bg-indigo-50'
-      : 'bg-white';
+      ? 'bg-accent'
+      : 'bg-card';
 
   return (
     <div
-      className={`relative w-5 h-5 ${connectable ? 'cursor-crosshair' : ''}`}
+      className={cn('relative w-5 h-5', connectable && 'cursor-crosshair')}
       style={{ overflow: 'visible' }}
     >
       <NodeHandles />
       <div
-        className={`absolute inset-0 rounded-full border-2 ${circleBorder} ${circleFill} ${
-          isDerived ? 'border-dashed' : ''
-        }`}
+        className={cn(
+          'absolute inset-0 rounded-full border-2',
+          circleBorder,
+          circleFill,
+          isDerived && 'border-dashed',
+        )}
       />
       {isMulti && (
         <div
-          className={`absolute inset-[3.5px] rounded-full border-[1.5px] pointer-events-none ${
-            selected ? 'border-indigo-500' : 'border-slate-800'
-          } ${isDerived ? 'border-dashed' : ''}`}
+          className={cn(
+            'absolute inset-[3.5px] rounded-full border-[1.5px] pointer-events-none',
+            selected ? 'border-primary' : 'border-foreground/80',
+            isDerived && 'border-dashed',
+          )}
         />
       )}
 
@@ -79,14 +85,15 @@ export const AttributeNode = ({
             }
           }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="absolute top-1/2 left-full ml-1.5 -translate-y-1/2 h-7 px-1.5 text-xs font-medium text-slate-800 bg-white border border-indigo-400 rounded shadow-sm outline-none focus:ring-2 focus:ring-indigo-400 z-20 text-left"
+          className="absolute top-1/2 left-full ml-1.5 -translate-y-1/2 h-7 px-1.5 text-xs font-medium text-foreground bg-background border border-primary rounded-md shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 z-20 text-left"
           style={{ width: editWidth }}
         />
       ) : (
         <span
-          className={`absolute top-1/2 left-full ml-1.5 -translate-y-1/2 text-xs select-none pointer-events-none whitespace-nowrap z-10 text-left ${
-            isKey ? 'font-bold text-slate-900 underline' : 'text-slate-800'
-          }`}
+          className={cn(
+            'absolute top-1/2 left-full ml-1.5 -translate-y-1/2 text-xs select-none pointer-events-none whitespace-nowrap z-10 text-left text-foreground',
+            isKey && 'font-bold underline',
+          )}
         >
           {displayLabel}
         </span>
