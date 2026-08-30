@@ -159,6 +159,11 @@ Posição da cadeia Tab: `positionRightOf`.
 3. Atributos rápidos (Enter): `heuserAttributePosition` + `layoutHeuserAttributes` sob o dono + edge + `layout: false`
 4. Cadeia Tab (entidade ↔ relacionamento): `positionRightOf` + edge + `layout: false` + edição inline
 
+## Branding
+
+- Logo em `public/logo.svg` (+ `public/logo.png` para fallback de favicon): tile indigo com marca ER (entidade → relacionamento, atributo-chave Heuser, “+” do Plus).
+- Favicon em `index.html`; mesma marca no header do dashboard e do editor (`import.meta.env.BASE_URL + 'logo.svg'`).
+
 ## Deploy
 
 - Workflow: `.github/workflows/deploy.yml` — em push em `main` (ou `workflow_dispatch`): `npm ci` → `npm run build` → artifact `dist` → GitHub Pages

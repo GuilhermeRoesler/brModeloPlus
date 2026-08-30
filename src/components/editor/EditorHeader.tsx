@@ -1,5 +1,5 @@
 import { useRef, type ChangeEvent } from 'react';
-import { ArrowLeft, Download, Grid, Upload } from 'lucide-react';
+import { ArrowLeft, Download, Upload } from 'lucide-react';
 import { MODES, type Mode } from '../../types';
 
 type EditorHeaderProps = {
@@ -38,9 +38,11 @@ export const EditorHeader = ({
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-indigo-200 shadow-lg">
-            <Grid className="text-white" size={18} />
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt="BrModeloPlus"
+            className="w-8 h-8 rounded-lg shadow-indigo-200 shadow-lg"
+          />
           <div>
             <h1 className="text-lg font-bold tracking-tight text-slate-800 leading-none">
               BrModelo<span className="text-indigo-600">Plus</span>

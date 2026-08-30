@@ -67,6 +67,8 @@ O `base` do Vite (`/brModeloPlus/`) é aplicado só no CI (`GITHUB_ACTIONS`); em
 ## Estrutura do código
 
 ```
+public/
+  logo.svg / logo.png     # Marca / favicon (ER + Heuser + Plus)
 src/
   App.tsx                 # Roteador (dashboard → editor)
   config/                 # Constantes e LOCAL_USER

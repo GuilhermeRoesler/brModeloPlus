@@ -2,7 +2,6 @@ import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } f
 import {
   FolderOpen,
   FolderPlus,
-  Grid,
   LayoutGrid,
   Trash2,
   Upload,
@@ -66,9 +65,11 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
     <div className="w-full h-screen bg-slate-50 flex flex-col overflow-hidden">
       <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <Grid className="text-white" size={18} />
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt="BrModeloPlus"
+            className="w-8 h-8 rounded-lg shadow-sm"
+          />
           <h1 className="font-bold text-slate-800">Meus Projetos</h1>
           <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded uppercase tracking-wide">
             Local
