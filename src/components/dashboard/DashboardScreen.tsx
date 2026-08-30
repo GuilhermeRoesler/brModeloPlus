@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react';
 import { FolderPlus, Trash2, Upload } from 'lucide-react';
 import { SmoothScroll } from '@/components/effects/SmoothScroll';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { readFileAsText } from '@/lib/fileTransfer';
@@ -276,9 +277,9 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                   Seus projetos
                 </h2>
                 {!loading && projects.length > 0 && (
-                  <span className="text-xs font-medium text-slate-400 tabular-nums">
+                  <Badge variant="secondary" className="rounded-md text-xs font-medium tabular-nums">
                     {projects.length} {projects.length === 1 ? 'projeto' : 'projetos'}
-                  </span>
+                  </Badge>
                 )}
               </div>
 
@@ -350,7 +351,7 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
                             title="Excluir projeto"
                             aria-label={`Excluir ${project.name}`}
                             onClick={(e) => void handleDelete(e, project.id)}
-                            className="btn-hover btn-hover--soft text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 rounded-lg"
                           >
                             <Trash2 size={15} />
                           </Button>

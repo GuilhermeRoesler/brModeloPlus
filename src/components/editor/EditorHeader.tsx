@@ -1,5 +1,8 @@
 import { useRef, type ChangeEvent } from 'react';
 import { ArrowLeft, Download, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { MODES, type Mode } from '../../types';
 
 type EditorHeaderProps = {
@@ -34,16 +37,18 @@ export const EditorHeader = ({
   };
 
   return (
-    <header className="editor-chrome h-14 sm:h-16 shrink-0 z-20 flex items-center justify-between gap-3 px-3 sm:px-5 border-b border-slate-200/80">
+    <header className="editor-chrome h-14 sm:h-16 shrink-0 z-20 flex items-center justify-between gap-3 px-3 sm:px-5 border-b border-border/80">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onBack}
-          className="btn-hover btn-hover--soft p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 rounded-xl shrink-0"
+          className="rounded-xl shrink-0 text-muted-foreground"
           title="Voltar aos projetos"
         >
-          <ArrowLeft size={20} />
-        </button>
+          <ArrowLeft />
+        </Button>
 
         <div className="flex items-center gap-2.5 min-w-0">
           <img
@@ -53,39 +58,42 @@ export const EditorHeader = ({
           />
           <div className="min-w-0 hidden sm:block">
             <h1
-              className="text-[15px] font-bold tracking-tight text-slate-800 leading-none truncate max-w-[12rem] lg:max-w-[18rem]"
+              className="text-[15px] font-bold tracking-tight text-foreground leading-none truncate max-w-[12rem] lg:max-w-[18rem]"
               title={projectName}
             >
               {projectName}
             </h1>
-            <p className="text-[10px] font-medium text-slate-400 mt-0.5 tracking-wide">
-              BrModelo<span className="text-indigo-500">Plus</span>
+            <p className="text-[10px] font-medium text-muted-foreground mt-0.5 tracking-wide">
+              BrModelo<span className="text-primary">Plus</span>
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:block h-7 w-px bg-slate-200/90 mx-1" />
+        <Separator orientation="vertical" className="hidden sm:block h-7 mx-1" />
 
         <div
-          className="flex p-1 rounded-xl bg-slate-100/90 border border-slate-200/60"
+          className="flex p-1 rounded-xl bg-muted/80 border border-border/60"
           role="tablist"
           aria-label="Modo de modelagem"
         >
           {Object.values(MODES).map((m) => (
-            <button
+            <Button
               key={m}
               type="button"
               role="tab"
+              variant={mode === m ? 'secondary' : 'ghost'}
+              size="sm"
               aria-selected={mode === m}
               onClick={() => onChangeMode(m)}
-              className={`editor-mode-tab btn-hover px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold ${
+              className={cn(
+                'editor-mode-tab h-8 rounded-lg px-2.5 sm:px-3 text-[11px] sm:text-xs font-semibold shadow-none',
                 mode === m
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-white/70'
-              }`}
+                  ? 'bg-background text-primary shadow-sm hover:bg-background hover:text-primary'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
             >
               {MODE_LABELS[m]}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -98,24 +106,28 @@ export const EditorHeader = ({
           className="hidden"
           onChange={handleFileChange}
         />
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => fileInputRef.current?.click()}
-          className="btn-hover btn-hover--soft inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100/90 border border-transparent hover:border-slate-200/80"
+          className="rounded-xl gap-1.5 text-xs font-semibold text-muted-foreground"
           title="Importar diagrama JSON"
         >
-          <Upload size={14} />
+          <Upload />
           <span className="hidden sm:inline">Importar</span>
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onExportJson}
-          className="btn-hover btn-hover--soft inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100/90 border border-transparent hover:border-slate-200/80"
+          className="rounded-xl gap-1.5 text-xs font-semibold text-muted-foreground"
           title="Exportar diagrama JSON"
         >
-          <Download size={14} />
+          <Download />
           <span className="hidden sm:inline">Exportar</span>
-        </button>
+        </Button>
       </div>
     </header>
   );

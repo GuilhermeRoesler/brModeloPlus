@@ -10,6 +10,8 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PropertyInput } from '../ui/PropertyInput';
 import { generateId } from '../../lib/utils';
 import {
@@ -76,13 +78,14 @@ export const PropertiesPanel = ({
           Propriedades em massa indisponíveis.
         </p>
         {!readOnly && (
-          <button
+          <Button
             type="button"
+            variant="destructive"
             onClick={() => deleteSelected()}
-            className="btn-hover btn-hover--soft px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 inline-flex items-center gap-2"
+            className="rounded-xl gap-2"
           >
-            <Trash2 size={16} /> Excluir todos
-          </button>
+            <Trash2 /> Excluir todos
+          </Button>
         )}
       </div>
     );
@@ -94,14 +97,16 @@ export const PropertiesPanel = ({
             <h2 className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.14em]">
               Propriedades
             </h2>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               onClick={() => deleteSelected(null)}
-              className="btn-hover btn-hover--soft p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+              className="rounded-lg text-muted-foreground"
               title="Fechar seleção"
             >
-              <X size={18} />
-            </button>
+              <X />
+            </Button>
           </div>
 
           {readOnly && (
@@ -154,7 +159,7 @@ export const PropertiesPanel = ({
                   label="Tipo"
                   type="select"
                   disabled={readOnly}
-                  value={selectedNode.data.attrType}
+                  value={selectedNode.data.attrType ?? 'normal'}
                   onChange={(val) => handleUpdate('attrType', val)}
                   options={[
                     { value: 'normal', label: 'Normal' },
@@ -162,38 +167,41 @@ export const PropertiesPanel = ({
                     { value: 'derived', label: 'Derivado' },
                     { value: 'multivalued', label: 'Multivalorado' },
                   ]}
+                  placeholder="Tipo do atributo"
                 />
               )}
 
               {selectedNode.type === NODE_TYPES.TABLE && (
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Colunas
                     </label>
                     {!readOnly && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() =>
                           handleUpdateTableCol([
                             ...(selectedNode.data.columns || []),
                             { id: generateId(), name: 'nova', type: 'INT', isPk: false },
                           ])
                         }
-                        className="text-indigo-600 hover:bg-indigo-50 p-1 rounded-lg"
+                        className="text-primary rounded-lg"
                       >
-                        <Plus size={16} />
-                      </button>
+                        <Plus />
+                      </Button>
                     )}
                   </div>
                   <div className="space-y-2">
                     {selectedNode.data.columns?.map((col) => (
                       <div
                         key={col.id}
-                        className="p-2 bg-slate-50/90 rounded-lg border border-slate-200/80 flex flex-col gap-2"
+                        className="p-2 bg-muted/50 rounded-lg border border-border/80 flex flex-col gap-2"
                       >
                         <div className="flex gap-2">
-                          <input
+                          <Input
                             value={col.name}
                             disabled={readOnly}
                             onChange={(e) =>
@@ -203,24 +211,26 @@ export const PropertiesPanel = ({
                                 ),
                               )
                             }
-                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs disabled:opacity-60"
+                            className="h-8 flex-1 rounded-lg text-xs"
                           />
                           {!readOnly && (
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon-xs"
                               onClick={() =>
                                 handleUpdateTableCol(
                                   (selectedNode.data.columns || []).filter((c) => c.id !== col.id),
                                 )
                               }
-                              className="text-red-400 hover:text-red-600"
+                              className="text-destructive rounded-lg"
                             >
-                              <Trash2 size={14} />
-                            </button>
+                              <Trash2 />
+                            </Button>
                           )}
                         </div>
                         <div className="flex gap-2 items-center">
-                          <input
+                          <Input
                             value={col.type}
                             disabled={readOnly}
                             onChange={(e) =>
@@ -230,7 +240,7 @@ export const PropertiesPanel = ({
                                 ),
                               )
                             }
-                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-500 disabled:opacity-60"
+                            className="h-8 flex-1 rounded-lg text-xs text-muted-foreground"
                           />
                           <label className="flex items-center gap-1">
                             <input
@@ -245,7 +255,7 @@ export const PropertiesPanel = ({
                                 )
                               }
                             />
-                            <span className="text-[10px] font-bold text-slate-500">PK</span>
+                            <span className="text-[10px] font-bold text-muted-foreground">PK</span>
                           </label>
                           <label className="flex items-center gap-1">
                             <input
@@ -260,7 +270,7 @@ export const PropertiesPanel = ({
                                 )
                               }
                             />
-                            <span className="text-[10px] font-bold text-slate-500">FK</span>
+                            <span className="text-[10px] font-bold text-muted-foreground">FK</span>
                           </label>
                         </div>
                       </div>
@@ -342,14 +352,15 @@ export const PropertiesPanel = ({
         </div>
 
         {!readOnly && (
-          <div className="p-5 border-t border-slate-100/90 bg-slate-50/50 shrink-0">
-            <button
+          <div className="p-5 border-t border-border/80 bg-muted/40 shrink-0">
+            <Button
               type="button"
+              variant="outline"
               onClick={() => deleteSelected()}
-              className="btn-hover btn-hover--soft w-full py-2.5 flex items-center justify-center gap-2 text-red-600 bg-white border border-red-100 hover:bg-red-50 hover:border-red-200 rounded-xl font-medium text-sm"
+              className="w-full rounded-xl gap-2 text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
             >
-              <Trash2 size={16} /> Excluir selecionado
-            </button>
+              <Trash2 /> Excluir selecionado
+            </Button>
           </div>
         )}
       </>

@@ -1,3 +1,13 @@
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
 type PropertyInputProps = {
   label: string;
   value: string | undefined;
@@ -8,6 +18,9 @@ type PropertyInputProps = {
   disabled?: boolean;
 };
 
+/** Valor sentinela: Radix Select não aceita string vazia. */
+const SELECT_NONE = '__none__';
+
 export const PropertyInput = ({
   label,
   value,
@@ -16,35 +29,55 @@ export const PropertyInput = ({
   options = [],
   placeholder = '',
   disabled = false,
-}: PropertyInputProps) => (
-  <div className="mb-4">
-    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
-      {label}
-    </label>
-    {type === 'select' ? (
-      <div className="relative">
-        <select
+}: PropertyInputProps) => {
+  const fieldId = label.toLowerCase().replace(/\s+/g, '-');
+
+  return (
+    <div className="mb-4 space-y-1.5">
+      <label
+        htmlFor={type === 'text' ? fieldId : undefined}
+        className="block text-xs font-medium text-muted-foreground uppercase tracking-wider ml-0.5"
+      >
+        {label}
+      </label>
+
+      {type === 'select' ? (
+        <Select
+          value={value === undefined || value === '' ? SELECT_NONE : value}
+          onValueChange={(next) => onChange(next === SELECT_NONE ? '' : next)}
+          disabled={disabled}
+        >
+          <SelectTrigger
+            size="default"
+            className={cn(
+              'w-full h-11 rounded-xl bg-muted/50 px-3 font-medium text-foreground shadow-xs',
+              'hover:bg-muted/80 transition-[color,background-color,box-shadow,border-color]',
+            )}
+          >
+            <SelectValue placeholder={placeholder || 'Selecionar…'} />
+          </SelectTrigger>
+          <SelectContent position="popper" align="start" className="z-[80] min-w-[var(--radix-select-trigger-width)]">
+            {options.map((opt) => {
+              const itemValue = opt.value === '' ? SELECT_NONE : opt.value;
+              return (
+                <SelectItem key={itemValue} value={itemValue} className="rounded-lg">
+                  {opt.label}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Input
+          id={fieldId}
+          type="text"
           value={value ?? ''}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    ) : (
-      <input
-        type={type}
-        value={value ?? ''}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 placeholder-slate-400 disabled:opacity-60 disabled:cursor-not-allowed"
-      />
-    )}
-  </div>
-);
+          placeholder={placeholder}
+          className="h-11 rounded-xl bg-muted/50 px-3 font-medium shadow-xs"
+        />
+      )}
+    </div>
+  );
+};

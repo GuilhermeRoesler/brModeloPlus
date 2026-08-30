@@ -11,6 +11,7 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 import { Map, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { saveRoom, subscribeToRoom } from '../../services/rooms';
 import { autoLayout } from '../../lib/autoLayout';
 import {
@@ -80,60 +81,68 @@ const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
   return (
     <div className="absolute bottom-4 left-3 sm:left-4 flex gap-2 z-10">
       <div className="editor-chrome rounded-xl p-1 flex items-center gap-0.5">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-sm"
           onClick={() => void zoomOut({ duration: 150 })}
-          className="btn-hover btn-hover--soft p-2 hover:bg-slate-100/90 rounded-lg text-slate-600"
+          className="rounded-lg text-muted-foreground"
           title="Diminuir zoom"
         >
-          <ZoomOut size={17} />
-        </button>
-        <span className="text-[11px] font-semibold w-11 text-center text-slate-600 tabular-nums">
+          <ZoomOut />
+        </Button>
+        <span className="text-[11px] font-semibold w-11 text-center text-muted-foreground tabular-nums">
           {Math.round(zoom * 100)}%
         </span>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-sm"
           onClick={() => void zoomIn({ duration: 150 })}
-          className="btn-hover btn-hover--soft p-2 hover:bg-slate-100/90 rounded-lg text-slate-600"
+          className="rounded-lg text-muted-foreground"
           title="Aumentar zoom"
         >
-          <ZoomIn size={17} />
-        </button>
+          <ZoomIn />
+        </Button>
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon-sm"
         onClick={() => {
           void fitView({ padding: 0.18, duration: 200, maxZoom: 1.15, minZoom: 0.35 });
         }}
-        className="btn-hover btn-hover--soft editor-chrome rounded-xl p-2 text-slate-600 hover:bg-white"
+        className="editor-chrome size-9 rounded-xl text-muted-foreground hover:bg-background"
         title="Ajustar à tela"
       >
-        <Maximize2 size={17} />
-      </button>
-      <button
+        <Maximize2 />
+      </Button>
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => {
           const vp = getViewport();
           void setViewport({ ...vp, x: 0, y: 0, zoom: 1 }, { duration: 150 });
         }}
-        className="btn-hover btn-hover--soft editor-chrome rounded-xl px-3 py-2 text-slate-600 hover:bg-white text-[11px] font-semibold"
+        className="editor-chrome h-9 rounded-xl px-3 text-[11px] font-semibold text-muted-foreground hover:bg-background"
         title="Zoom 100% e origem"
       >
         100%
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant={showMinimap ? 'secondary' : 'ghost'}
+        size="icon-sm"
         onClick={onToggleMinimap}
         aria-pressed={showMinimap}
-        className={`btn-hover editor-chrome rounded-xl p-2 ${
-          showMinimap
-            ? 'btn-hover--solid text-indigo-600 bg-indigo-50/80'
-            : 'btn-hover--soft text-slate-600 hover:bg-white'
+        className={`editor-chrome size-9 rounded-xl ${
+          showMinimap ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-background'
         }`}
         title={showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa'}
       >
-        <Map size={17} />
-      </button>
+        <Map />
+      </Button>
     </div>
   );
 };

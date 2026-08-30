@@ -6,6 +6,9 @@ import {
   MousePointer2,
   Square,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { MODES, type Mode, type Tool } from '../../types';
 
 type ToolbarProps = {
@@ -26,23 +29,28 @@ type ToolbarButtonProps = {
 };
 
 const ToolbarButton = ({ icon: Icon, label, active, onClick, color }: ToolbarButtonProps) => (
-  <button
+  <Button
     type="button"
+    variant={active ? 'default' : 'ghost'}
+    size="icon"
     onClick={onClick}
     title={label}
     aria-label={label}
     aria-pressed={active}
-    className={`btn-hover group relative flex items-center justify-center w-11 h-11 rounded-xl ${
-      active
-        ? 'btn-hover--solid bg-indigo-600 text-white'
-        : 'btn-hover--soft text-slate-600 hover:bg-slate-100/90 hover:text-slate-800'
-    }`}
+    className={cn(
+      'group relative size-11 rounded-xl',
+      active && 'shadow-sm shadow-primary/25',
+    )}
   >
-    <Icon size={20} className={active ? undefined : color} strokeWidth={2.1} />
-    <span className="absolute left-full ml-2.5 px-2 py-1 bg-slate-800 text-white text-[11px] font-medium rounded-md opacity-0 translate-x-0.5 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap z-50 transition-[opacity,transform] duration-200">
+    <Icon
+      size={20}
+      className={active ? undefined : color}
+      strokeWidth={2.1}
+    />
+    <span className="absolute left-full ml-2.5 px-2 py-1 bg-foreground text-background text-[11px] font-medium rounded-md opacity-0 translate-x-0.5 group-hover:opacity-100 group-hover:translate-x-0 pointer-events-none whitespace-nowrap z-50 transition-[opacity,translate] duration-200">
       {label}
     </span>
-  </button>
+  </Button>
 );
 
 export const Toolbar = ({
@@ -61,12 +69,12 @@ export const Toolbar = ({
     />
 
     {derivedReadOnly ? (
-      <p className="max-w-[3.75rem] mx-auto text-[9px] leading-tight text-center text-slate-400 px-0.5 py-1.5">
+      <p className="max-w-[3.75rem] mx-auto text-[9px] leading-tight text-center text-muted-foreground px-0.5 py-1.5">
         Derivado do conceitual
       </p>
     ) : (
       <>
-        <div className="w-7 h-px bg-slate-200/90 mx-auto my-0.5" />
+        <Separator className="w-7 mx-auto my-0.5" />
 
         {currentMode === MODES.CONCEPTUAL && (
           <>
@@ -84,7 +92,7 @@ export const Toolbar = ({
               onClick={() => setTool('relationship')}
               color="text-rose-500"
             />
-            <div className="w-7 h-px bg-slate-200/90 mx-auto my-0.5" />
+            <Separator className="w-7 mx-auto my-0.5" />
           </>
         )}
 
@@ -94,7 +102,7 @@ export const Toolbar = ({
           active={tool === 'connection'}
           onClick={() => setTool('connection')}
         />
-        <div className="w-7 h-px bg-slate-200/90 mx-auto my-0.5" />
+        <Separator className="w-7 mx-auto my-0.5" />
         <ToolbarButton
           icon={LayoutGrid}
           label="Auto layout"
