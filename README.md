@@ -13,7 +13,7 @@
   - **Lógico:** tabelas/FKs geradas a partir do conceitual (somente leitura estrutural).
   - **Físico:** SQL DDL gerado automaticamente (textarea somente leitura + copiar).
 - **Editor**
-  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto. Controles de zoom + ajustar à tela; chrome visual alinhado ao dashboard.
+  - Drag-and-drop, zoom (scroll), pan, seleção múltipla (Shift), Delete/Backspace via **React Flow**. Ao arrastar entidade/relacionamento, os atributos ligados vão junto. Controles de zoom + ajustar à tela + minimapa opcional; empty state e dicas de atalho (Enter/Tab) no canvas; nome do projeto no header.
   - Painel de propriedades.
   - **Auto layout** (**ELK.js stress** nos nós estruturais; atributos Heuser em cascata sob o dono).
   - **Conectar:** arrastar handle→handle (modo Conectar).

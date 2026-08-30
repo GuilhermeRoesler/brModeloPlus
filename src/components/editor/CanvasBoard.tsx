@@ -8,6 +8,7 @@ import {
   Background,
   BackgroundVariant,
   ConnectionMode,
+  MiniMap,
   ReactFlow,
   useReactFlow,
   type Connection as RfConnection,
@@ -16,7 +17,7 @@ import {
   type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { ErEdge, ErNode, Tool } from '../../types';
+import { MODES, type ErEdge, type ErNode, type Mode, type Tool } from '../../types';
 import type { CardinalitySide } from '../../lib/cardinality';
 import { AttributeNode } from './flow/AttributeNode';
 import { CardinalityEdge } from './flow/CardinalityEdge';
@@ -40,6 +41,7 @@ type CanvasBoardProps = {
   onNodesChange: OnNodesChange<ErNode>;
   onEdgesChange: OnEdgesChange<ErEdge>;
   tool: Tool;
+  mode: Mode;
   onConnect: (source: string, target: string) => void;
   onPaneAddNode: (flowPos: { x: number; y: number }) => void;
   editingLabelId?: string | null;
@@ -51,6 +53,7 @@ type CanvasBoardProps = {
   fitRequestId?: number;
   /** Modos derivados: pan/zoom/seleção sem editar. */
   readOnly?: boolean;
+  showMinimap?: boolean;
 };
 
 const FitController = ({ fitRequestId }: { fitRequestId: number }) => {
@@ -65,12 +68,89 @@ const FitController = ({ fitRequestId }: { fitRequestId: number }) => {
   return null;
 };
 
+const Kbd = ({ children }: { children: string }) => (
+  <kbd className="inline-flex items-center justify-center min-w-[1.5rem] px-1.5 py-0.5 rounded-md bg-slate-100 border border-slate-200/90 text-[10px] font-semibold text-slate-600 tabular-nums">
+    {children}
+  </kbd>
+);
+
+const CanvasEmptyState = ({
+  readOnly,
+  mode,
+}: {
+  readOnly: boolean;
+  mode: Mode;
+}) => {
+  if (readOnly || mode === MODES.LOGICAL) {
+    return (
+      <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none p-6">
+        <div className="editor-chrome editor-panel-in max-w-sm text-center px-6 py-8 rounded-2xl">
+          <h3 className="text-sm font-bold text-slate-800 mb-2">Nada derivado ainda</h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Modele entidades e relacionamentos no modo conceitual — o lógico aparece aqui
+            automaticamente.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none p-6">
+      <div className="editor-chrome editor-panel-in max-w-md text-center px-6 py-8 rounded-2xl">
+        <h3 className="text-base font-bold text-slate-800 mb-2">Comece o diagrama</h3>
+        <p className="text-xs text-slate-500 leading-relaxed mb-5">
+          Escolha <span className="font-semibold text-slate-700">Entidade</span> na barra e
+          clique no canvas — ou use os atalhos abaixo.
+        </p>
+        <ul className="text-left space-y-2.5 text-xs text-slate-600 mx-auto max-w-[16rem]">
+          <li className="flex items-center gap-2.5">
+            <Kbd>Enter</Kbd>
+            <span>Atributo sob o selecionado</span>
+          </li>
+          <li className="flex items-center gap-2.5">
+            <Kbd>Tab</Kbd>
+            <span>Cadeia entidade ↔ relacionamento</span>
+          </li>
+          <li className="flex items-center gap-2.5">
+            <Kbd>Del</Kbd>
+            <span>Excluir seleção</span>
+          </li>
+          <li className="flex items-center gap-2.5">
+            <Kbd>Shift</Kbd>
+            <span>Multi-seleção</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+const ShortcutHints = ({ raised }: { raised?: boolean }) => (
+  <div
+    className={`absolute right-4 z-10 hidden md:flex editor-chrome rounded-xl px-3 py-2 gap-3 items-center pointer-events-none ${
+      raised ? 'bottom-28' : 'bottom-4'
+    }`}
+  >
+    <span className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500">
+      <Kbd>Enter</Kbd> atributo
+    </span>
+    <span className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500">
+      <Kbd>Tab</Kbd> cadeia
+    </span>
+    <span className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500">
+      <Kbd>Del</Kbd>
+    </span>
+  </div>
+);
+
 export const CanvasBoard = ({
   nodes,
   edges,
   onNodesChange,
   onEdgesChange,
   tool,
+  mode,
   onConnect,
   onPaneAddNode,
   editingLabelId = null,
@@ -81,6 +161,7 @@ export const CanvasBoard = ({
   onCycleEdgeCardinality,
   fitRequestId = 0,
   readOnly = false,
+  showMinimap = false,
 }: CanvasBoardProps) => {
   const { screenToFlowPosition } = useReactFlow();
 
@@ -164,6 +245,8 @@ export const CanvasBoard = ({
     !readOnly &&
     (tool === 'entity' || tool === 'relationship' || tool === 'table');
   const isConnectionTool = !readOnly && tool === 'connection';
+  const isEmpty = nodes.length === 0;
+  const showConceptualHints = !readOnly && mode === MODES.CONCEPTUAL && !isEmpty;
 
   return (
     <DiagramFlowProvider value={contextValue}>
@@ -209,6 +292,22 @@ export const CanvasBoard = ({
             color="#c7d2fe"
           />
           <FitController fitRequestId={fitRequestId} />
+          {showMinimap && !isEmpty ? (
+            <MiniMap
+              pannable
+              zoomable
+              nodeStrokeWidth={2}
+              nodeColor={(n) => {
+                if (n.type === 'relationship') return '#f43f5e';
+                if (n.type === 'attribute') return '#6366f1';
+                if (n.type === 'table') return '#0f172a';
+                return '#4f46e5';
+              }}
+              maskColor="rgba(15, 23, 42, 0.08)"
+              className="!bg-white/90 !border !border-slate-200/80 !rounded-xl !shadow-none"
+              style={{ width: 140, height: 96 }}
+            />
+          ) : null}
           {isConnectionTool ? (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
               <span className="editor-chrome text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl">
@@ -217,6 +316,11 @@ export const CanvasBoard = ({
             </div>
           ) : null}
         </ReactFlow>
+
+        {isEmpty ? <CanvasEmptyState readOnly={readOnly} mode={mode} /> : null}
+        {showConceptualHints ? (
+          <ShortcutHints raised={showMinimap && !isEmpty} />
+        ) : null}
       </div>
     </DiagramFlowProvider>
   );

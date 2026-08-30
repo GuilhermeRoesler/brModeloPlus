@@ -10,7 +10,7 @@ import {
   type EdgeChange,
   type NodeChange,
 } from '@xyflow/react';
-import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Map, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { saveRoom, subscribeToRoom } from '../../services/rooms';
 import { autoLayout } from '../../lib/autoLayout';
 import {
@@ -68,7 +68,12 @@ type EditorScreenProps = {
   onBack: () => void;
 };
 
-const ZoomControls = () => {
+type ZoomControlsProps = {
+  showMinimap: boolean;
+  onToggleMinimap: () => void;
+};
+
+const ZoomControls = ({ showMinimap, onToggleMinimap }: ZoomControlsProps) => {
   const { zoomIn, zoomOut, setViewport, getViewport, fitView } = useReactFlow();
   const zoom = useStore((s) => s.transform[2]);
 
@@ -116,6 +121,19 @@ const ZoomControls = () => {
       >
         100%
       </button>
+      <button
+        type="button"
+        onClick={onToggleMinimap}
+        aria-pressed={showMinimap}
+        className={`editor-chrome rounded-xl p-2 transition-colors ${
+          showMinimap
+            ? 'text-indigo-600 bg-indigo-50/80'
+            : 'text-slate-600 hover:bg-white'
+        }`}
+        title={showMinimap ? 'Ocultar minimapa' : 'Mostrar minimapa'}
+      >
+        <Map size={17} />
+      </button>
     </div>
   );
 };
@@ -133,6 +151,19 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [fitRequestId, setFitRequestId] = useState(0);
   const [roomReady, setRoomReady] = useState(false);
+  const [showMinimap, setShowMinimap] = useState(false);
+
+  const projectName = useMemo(
+    () => findProjectByRoomId(roomId)?.name?.trim() || 'Projeto',
+    [roomId, roomReady],
+  );
+
+  useEffect(() => {
+    document.title = `${projectName} · BrModeloPlus`;
+    return () => {
+      document.title = 'BrModeloPlus';
+    };
+  }, [projectName]);
 
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -777,6 +808,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
     <div className="editor-shell w-full h-screen flex flex-col overflow-hidden text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
       <EditorHeader
         mode={mode}
+        projectName={projectName}
         onBack={onBack}
         onChangeMode={handleChangeMode}
         onExportJson={handleExportJson}
@@ -804,6 +836,7 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
               onNodesChange={handleNodesChange}
               onEdgesChange={handleEdgesChange}
               tool={isLogicalReadOnly ? 'select' : tool}
+              mode={mode}
               onConnect={handleConnect}
               onPaneAddNode={addNodeAt}
               editingLabelId={isLogicalReadOnly ? null : editingLabelId}
@@ -814,9 +847,13 @@ const EditorWorkspace = ({ roomId, onBack }: EditorScreenProps) => {
               onCycleEdgeCardinality={handleCycleEdgeCardinality}
               fitRequestId={fitRequestId}
               readOnly={isLogicalReadOnly}
+              showMinimap={showMinimap}
             />
 
-            <ZoomControls />
+            <ZoomControls
+              showMinimap={showMinimap}
+              onToggleMinimap={() => setShowMinimap((v) => !v)}
+            />
 
             <PropertiesPanel
               selectedIds={selectedIds}

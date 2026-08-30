@@ -4,6 +4,7 @@ import { MODES, type Mode } from '../../types';
 
 type EditorHeaderProps = {
   mode: Mode;
+  projectName: string;
   onBack: () => void;
   onChangeMode: (mode: Mode) => void;
   onExportJson: () => void;
@@ -18,6 +19,7 @@ const MODE_LABELS: Record<Mode, string> = {
 
 export const EditorHeader = ({
   mode,
+  projectName,
   onBack,
   onChangeMode,
   onExportJson,
@@ -49,12 +51,15 @@ export const EditorHeader = ({
             alt=""
             className="w-8 h-8 rounded-[10px] shrink-0"
           />
-          <div className="min-w-0 hidden xs:block sm:block">
-            <h1 className="text-[15px] font-bold tracking-tight text-slate-800 leading-none truncate">
-              BrModelo<span className="text-indigo-600">Plus</span>
+          <div className="min-w-0 hidden sm:block">
+            <h1
+              className="text-[15px] font-bold tracking-tight text-slate-800 leading-none truncate max-w-[12rem] lg:max-w-[18rem]"
+              title={projectName}
+            >
+              {projectName}
             </h1>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5 tracking-wide">
-              Editor local
+              BrModelo<span className="text-indigo-500">Plus</span>
             </p>
           </div>
         </div>
