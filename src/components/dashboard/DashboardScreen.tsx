@@ -1,9 +1,13 @@
 import { useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent } from 'react';
 import { FolderPlus, Trash2, Upload } from 'lucide-react';
-import { readFileAsText } from '../../lib/fileTransfer';
-import { parseProjectFileJson, ProjectFileError } from '../../lib/projectFile';
-import { useProjects } from '../../hooks/useProjects';
-import type { AppUser, Project } from '../../types';
+import { SmoothScroll } from '@/components/effects/SmoothScroll';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { readFileAsText } from '@/lib/fileTransfer';
+import { parseProjectFileJson, ProjectFileError } from '@/lib/projectFile';
+import { useProjects } from '@/hooks/useProjects';
+import type { AppUser, Project } from '@/types';
 
 type DashboardScreenProps = {
   user: AppUser;
@@ -174,188 +178,193 @@ export const DashboardScreen = ({ user, onOpenProject }: DashboardScreenProps) =
             BrModelo<span className="text-indigo-600">Plus</span>
           </span>
         </div>
-        <p className="text-[11px] font-medium text-slate-500 tracking-wide">
+        <Badge variant="secondary" className="rounded-lg font-medium text-[11px] text-slate-500">
           Salvo neste dispositivo
-        </p>
+        </Badge>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-5 sm:px-8 pb-10">
-        <div className="max-w-5xl mx-auto">
-          <section className="dash-animate-in relative grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-center py-6 sm:py-10">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-600 mb-3">
-                Modelagem de dados
-              </p>
-              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.05] mb-4">
-                BrModelo
-                <span className="text-indigo-600">Plus</span>
-              </h1>
-              <p className="text-base sm:text-lg text-slate-600 max-w-md leading-relaxed mb-8">
-                Diagramas ER conceitual, lógico e físico — no navegador, sem conta.
-              </p>
+      <main className="flex-1 min-h-0 overflow-hidden">
+        <SmoothScroll className="h-full px-5 sm:px-8 pb-10">
+          <div className="max-w-5xl mx-auto">
+            <section className="dash-animate-in relative grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-center py-6 sm:py-10">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-600 mb-3">
+                  Modelagem de dados
+                </p>
+                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.05] mb-4">
+                  BrModelo
+                  <span className="text-indigo-600">Plus</span>
+                </h1>
+                <p className="text-base sm:text-lg text-slate-600 max-w-md leading-relaxed mb-8">
+                  Diagramas ER conceitual, lógico e físico — no navegador, sem conta.
+                </p>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/json,.json,.brmodelo.json"
-                  className="hidden"
-                  onChange={(e) => {
-                    void handleImportFile(e);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={openCreate}
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors"
-                >
-                  <FolderPlus size={18} strokeWidth={2.25} />
-                  Novo projeto
-                </button>
-                <button
-                  type="button"
-                  disabled={importing}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 backdrop-blur-sm"
-                >
-                  <Upload size={18} strokeWidth={2.25} />
-                  {importing ? 'Importando…' : 'Importar JSON'}
-                </button>
-              </div>
-            </div>
-
-            <div className="hidden sm:block relative h-44 lg:h-56">
-              <div className="absolute inset-0 rounded-3xl bg-white/50 border border-white/80 backdrop-blur-[2px]" />
-              <div className="relative h-full p-4 lg:p-6">
-                <HeroDiagram />
-              </div>
-            </div>
-          </section>
-
-          {isCreating && (
-            <form
-              onSubmit={(e) => void handleCreate(e)}
-              className="dash-animate-in mb-8 p-5 sm:p-6 rounded-2xl bg-white/90 border border-indigo-100/80 backdrop-blur-sm"
-            >
-              <label className="block text-xs font-semibold text-slate-500 tracking-wide mb-2">
-                Nome do projeto
-              </label>
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-stretch">
-                <input
-                  autoFocus
-                  type="text"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="Ex.: Biblioteca universitária"
-                  className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 outline-none text-sm font-medium text-slate-800 placeholder:text-slate-400"
-                />
-                <div className="flex gap-2 shrink-0">
-                  <button
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/json,.json,.brmodelo.json"
+                    className="hidden"
+                    onChange={(e) => {
+                      void handleImportFile(e);
+                    }}
+                  />
+                  <Button
                     type="button"
-                    onClick={() => setIsCreating(false)}
-                    className="flex-1 sm:flex-none px-4 py-3 text-slate-500 font-medium hover:bg-slate-100 rounded-xl text-sm transition-colors"
+                    size="lg"
+                    onClick={openCreate}
+                    className="rounded-xl gap-2"
                   >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 text-sm transition-colors"
+                    <FolderPlus size={18} strokeWidth={2.25} />
+                    Novo projeto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    disabled={importing}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-xl gap-2 bg-white/80 backdrop-blur-sm"
                   >
-                    Criar
-                  </button>
+                    <Upload size={18} strokeWidth={2.25} />
+                    {importing ? 'Importando…' : 'Importar JSON'}
+                  </Button>
                 </div>
               </div>
-            </form>
-          )}
 
-          <section className="dash-animate-in" style={{ animationDelay: '0.12s' }}>
-            <div className="flex items-baseline justify-between gap-3 mb-5">
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">
-                Seus projetos
-              </h2>
-              {!loading && projects.length > 0 && (
-                <span className="text-xs font-medium text-slate-400 tabular-nums">
-                  {projects.length} {projects.length === 1 ? 'projeto' : 'projetos'}
-                </span>
-              )}
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center py-24">
-                <span className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+              <div className="hidden sm:block relative h-44 lg:h-56">
+                <div className="absolute inset-0 rounded-3xl bg-white/50 border border-white/80 backdrop-blur-[2px]" />
+                <div className="relative h-full p-4 lg:p-6">
+                  <HeroDiagram />
+                </div>
               </div>
-            ) : projects.length === 0 ? (
-              <div className="relative overflow-hidden rounded-3xl border border-dashed border-indigo-200/80 bg-white/60 px-6 py-16 text-center">
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-40"
-                  aria-hidden
-                >
-                  <div className="absolute left-1/2 top-6 -translate-x-1/2 w-64 h-36">
-                    <HeroDiagram />
+            </section>
+
+            {isCreating && (
+              <form
+                onSubmit={(e) => void handleCreate(e)}
+                className="dash-animate-in mb-8 p-5 sm:p-6 rounded-2xl bg-white/90 border border-indigo-100/80 backdrop-blur-sm"
+              >
+                <label className="block text-xs font-semibold text-slate-500 tracking-wide mb-2">
+                  Nome do projeto
+                </label>
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                  <Input
+                    autoFocus
+                    type="text"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="Ex.: Biblioteca universitária"
+                    className="flex-1 h-11 rounded-xl bg-slate-50"
+                  />
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setIsCreating(false)}
+                      className="rounded-xl"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="rounded-xl px-6">
+                      Criar
+                    </Button>
                   </div>
                 </div>
-                <div className="relative">
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">
-                    Comece pelo primeiro diagrama
-                  </h3>
-                  <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6 leading-relaxed">
-                    Crie um projeto em branco ou importe um JSON exportado do BrModeloPlus.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={openCreate}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors"
-                  >
-                    <FolderPlus size={16} />
-                    Criar projeto
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <ul className="dash-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none p-0 m-0">
-                {projects.map((project, index) => (
-                  <li key={project.id}>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => onOpenProject(project.roomId)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          onOpenProject(project.roomId);
-                        }
-                      }}
-                      className="group w-full text-left rounded-2xl overflow-hidden bg-white/85 border border-slate-200/90 hover:border-indigo-300 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 cursor-pointer"
-                    >
-                      <div className="h-28 border-b border-slate-100 overflow-hidden pointer-events-none">
-                        <ProjectThumb variant={index} />
-                      </div>
-                      <div className="p-4 flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-slate-800 text-[15px] truncate group-hover:text-indigo-700 transition-colors">
-                            {project.name}
-                          </h3>
-                          <p className="text-xs text-slate-400 mt-1">
-                            {formatProjectDate(project.createdAt)}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          title="Excluir projeto"
-                          aria-label={`Excluir ${project.name}`}
-                          onClick={(e) => void handleDelete(e, project.id)}
-                          className="p-2 -mr-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              </form>
             )}
-          </section>
-        </div>
+
+            <section className="dash-animate-in" style={{ animationDelay: '0.12s' }}>
+              <div className="flex items-baseline justify-between gap-3 mb-5">
+                <h2 className="text-lg font-bold tracking-tight text-slate-800">
+                  Seus projetos
+                </h2>
+                {!loading && projects.length > 0 && (
+                  <span className="text-xs font-medium text-slate-400 tabular-nums">
+                    {projects.length} {projects.length === 1 ? 'projeto' : 'projetos'}
+                  </span>
+                )}
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center py-24">
+                  <span className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="relative overflow-hidden rounded-3xl border border-dashed border-indigo-200/80 bg-white/60 px-6 py-16 text-center">
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-40"
+                    aria-hidden
+                  >
+                    <div className="absolute left-1/2 top-6 -translate-x-1/2 w-64 h-36">
+                      <HeroDiagram />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">
+                      Comece pelo primeiro diagrama
+                    </h3>
+                    <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6 leading-relaxed">
+                      Crie um projeto em branco ou importe um JSON exportado do BrModeloPlus.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={openCreate}
+                      className="rounded-xl gap-2"
+                    >
+                      <FolderPlus size={16} />
+                      Criar projeto
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <ul className="dash-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 list-none p-0 m-0">
+                  {projects.map((project, index) => (
+                    <li key={project.id}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => onOpenProject(project.roomId)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onOpenProject(project.roomId);
+                          }
+                        }}
+                        className="group w-full text-left rounded-2xl overflow-hidden bg-white/85 border border-slate-200/90 hover:border-indigo-300 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 cursor-pointer"
+                      >
+                        <div className="h-28 border-b border-slate-100 overflow-hidden pointer-events-none">
+                          <ProjectThumb variant={index} />
+                        </div>
+                        <div className="p-4 flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-slate-800 text-[15px] truncate group-hover:text-indigo-700 transition-colors">
+                              {project.name}
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-1">
+                              {formatProjectDate(project.createdAt)}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Excluir projeto"
+                            aria-label={`Excluir ${project.name}`}
+                            onClick={(e) => void handleDelete(e, project.id)}
+                            className="text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        </SmoothScroll>
       </main>
     </div>
   );

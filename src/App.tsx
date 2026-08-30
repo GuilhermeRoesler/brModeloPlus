@@ -1,5 +1,6 @@
 import { useAuth } from './hooks/useAuth';
 import { setRoomInUrl } from './lib/utils';
+import { CustomCursor } from './components/effects/CustomCursor';
 import { DashboardScreen } from './components/dashboard/DashboardScreen';
 import { EditorScreen } from './components/editor/EditorScreen';
 
@@ -18,11 +19,14 @@ export default function App() {
 
   if (!user) return null;
 
-  if (roomId) {
-    return (
-      <EditorScreen user={user} roomId={roomId} onBack={handleBackToDashboard} />
-    );
-  }
-
-  return <DashboardScreen user={user} onOpenProject={handleOpenProject} />;
+  return (
+    <>
+      <CustomCursor />
+      {roomId ? (
+        <EditorScreen user={user} roomId={roomId} onBack={handleBackToDashboard} />
+      ) : (
+        <DashboardScreen user={user} onOpenProject={handleOpenProject} />
+      )}
+    </>
+  );
 }

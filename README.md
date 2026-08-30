@@ -28,7 +28,8 @@
 
 - **Frontend:** [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/)
 - **Build:** [Vite](https://vitejs.dev/)
-- **UI:** [Tailwind CSS v4](https://tailwindcss.com/), [Lucide](https://lucide.dev/)
+- **UI:** [Tailwind CSS v4](https://tailwindcss.com/), [Lucide](https://lucide.dev/), [shadcn/ui](https://ui.shadcn.com/)
+- **Motion:** [Lenis](https://github.com/darkroomengineering/lenis) (scroll suave no dashboard), cursor customizado
 - **Canvas / layout:** [React Flow](https://reactflow.dev/) (`@xyflow/react`), [ELK.js](https://www.eclipse.org/elk/)
 
 ## Como executar
@@ -70,17 +71,18 @@ O `base` do Vite (`/brModeloPlus/`) é aplicado só no CI (`GITHUB_ACTIONS`); em
 public/
   logo.svg / logo.png     # Marca / favicon (ER + Heuser + Plus)
 src/
-  App.tsx                 # Roteador (dashboard → editor)
-  config/                 # Constantes e LOCAL_USER
-  types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
-  lib/                    # SQL, localStorage, sanitizeDiagram, autoLayout/ELK, nodeGeometry, diagramFlow, cardinality
-  services/               # Projetos e salas (localStorage)
-  hooks/                  # useAuth, useProjects
+  App.tsx                 # Roteador (dashboard → editor) + CustomCursor
   components/
+    effects/              # Lenis (SmoothScroll), CustomCursor
+    ui/                   # shadcn (button, card, badge, input, separator) + PropertyInput
     dashboard/            # DashboardScreen
     editor/               # Editor + React Flow canvas, toolbar, painéis
       flow/               # Nós/edges HTML
-    ui/                   # Componentes reutilizáveis
+  config/                 # Constantes e LOCAL_USER
+  types/                  # ErNode / ErEdge (React Flow) + Mode/Tool/Project
+  lib/                    # SQL, localStorage, sanitizeDiagram, autoLayout/ELK, utils (cn)
+  services/               # Projetos e salas (localStorage)
+  hooks/                  # useAuth, useProjects
 ```
 
 Spec detalhada para agentes e contribuidores: [`.cursor/skills/brmodelo-plus/SKILL.md`](.cursor/skills/brmodelo-plus/SKILL.md).
